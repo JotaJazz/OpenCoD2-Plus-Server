@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-01 — 40 Hz played
+
+- The maintainer played on a public server with this branch's 1.0 build at `sv_fps` 40 and noticed no difference from 20 Hz: the game's pace held.
+- That also means no improvement was felt, and the test likely ran from the server's own network, where the LAN exemption ignores `rate` and `snaps`. Left open: a player on the internet.
+
 ## 2026-10-31 — script time follows the frame rate on Plus
 
 - `wait` was fixed at 20 steps a second, so scripts ran at the frame rate. It follows `sv_fps` now, and 100 `wait 0.05` take 5,000 ms at 20 and at 40 Hz. `sv_fps` still defaults to 20.

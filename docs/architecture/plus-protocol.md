@@ -167,8 +167,10 @@ The rest of milestone 1:
 - Bots pass in tdm and sd at 40 Hz. The OpenCoD2-Plus client reported 0
   prediction misses at 60 fps and 1 at 125 fps. Its check that the client moves
   fails at 125 fps at 20 Hz too, because the moves are counted in client frames.
-- Still to check by hand: round timers and weapon times against 20 Hz, zPAM
-  3.36 and a full match with people on the internet.
+- The maintainer played on a public 1.0 build of this branch at 40 Hz on
+  2026-11-01, with no difference from 20 Hz in the game's pace. That run came
+  from close by, so it may have had the LAN exemption.
+- Still to check: a player on the internet, and whether 40 Hz feels better.
 
 ## Milestone 0 results
 
