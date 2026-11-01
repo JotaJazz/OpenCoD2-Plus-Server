@@ -421,6 +421,21 @@ def check_connect_limit(port, protocol, check):
     for client in joined:
         client.close()
 
+    if protocol == 118:
+        plain, old, plus = cod2client.Client(port), cod2client.Client(port), cod2client.Client(port)
+        try:
+            refused = plain.connect(protocol, 'stock', plus=None)
+            check('a stock client is told to update', refused is not None and 'OpenCoD2-Plus' in refused, str(refused))
+            refused = old.connect(protocol, 'old', plus=120)
+            check('another Plus version is told to update', refused is not None and 'OpenCoD2-Plus' in refused, str(refused))
+            refused = plus.connect(protocol, 'plus')
+            check('a Plus client is told the version', refused is None and plus.connect_reply.split()[1:] == ['121'],
+                  refused or plus.connect_reply)
+        finally:
+            plain.close()
+            old.close()
+            plus.close()
+
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         s.bind(('127.0.0.2', 0))
         s.settimeout(0.5)

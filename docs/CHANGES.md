@@ -47,6 +47,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 
 ## Compatibility and server behaviour
 
+- **CoD2 Plus handshake:** on the `plus` branch the 1.3 build only takes the CoD2 Plus client, and tells any other client to update. The 1.0 build, bots and local clients are not affected.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
 - **20% less traffic to clients:** the snapshot writer sent every field of a changed entity in full, even the ones that had not changed. It now marks them as unchanged, as the original does, with the same network format, so every client benefits.
 - **Master servers:**
@@ -123,6 +124,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `logTimestamps` | `0` | 0–1 | `1` starts each console log line with the date and time. |
 | `g_logRotateSize` | `0` | 0–2047 | Size in MB at which `g_log` (`games_mp.log`) is rotated when the next map starts. `0` never rotates it. |
 | `g_logRotate` | `1` | 1–1000 | Older game logs kept when `g_logRotateSize` rotates it, as `<name>.1` (newest) to `<name>.N`. |
+| `sv_plusNotice` | empty | text | 1.3 build of the `plus` branch: what a client without CoD2 Plus reads when refused. Empty uses the default, with the link to the client. |
 | `net_altPort` | `0` | 0–65535 | Second UDP port of the 1.0 build, announced as protocol 118 and version 1.3. `0` keeps it closed. Only read at start, so set it on the command line. |
 | `net_strictPort` | `0` | 0–1 | `1` stops the server when `net_port` is busy instead of trying the next 9 ports. Only read at startup, so set it on the command line. |
 | `sv_logRcon` | `1` | 0–1 | `0` leaves accepted rcon commands out of the log. Wrong passwords are always logged. |

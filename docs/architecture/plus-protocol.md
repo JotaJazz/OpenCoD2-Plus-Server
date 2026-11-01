@@ -10,7 +10,7 @@ This file is the source of truth; OpenCoD2-Plus follows it. The decision is
 | Name | CoD2 Plus |
 | Plus version | 121 |
 | Base | The 1.3 build (`make PROTOCOL=118`) |
-| State | Draft, second version: nothing is implemented; milestone 0 is measured |
+| State | Second version: milestones 0 and 1 and the server's side of 2 are in |
 
 ## Goals
 
@@ -50,7 +50,8 @@ list, and no client needs to look at a server before connecting.
    its Plus version, next to the usual `protocol\118`. Stock servers do not
    read it. The key is set for that packet only, not as a user variable.
 2. The server compares it with its own Plus version.
-   - Equal: it stores it in the client slot and answers `connectResponse 121`.
+   - Equal: it answers `connectResponse 121`. The client slot stores it once a
+     format depends on it.
    - Anything else, or no key: it refuses the client with the update notice.
 3. The client uses the Plus format only if the answer's argument equals its
    own version. A bare answer comes from a stock server, and means 1.3.
@@ -65,7 +66,10 @@ rest of the network code, and the value only ever selects a format.
 
 The refusal is an `error` packet with the text, as the ban messages in
 `SV_DirectConnect` (`src/server/sv_client_mp.cpp`), so stock clients show it on
-screen and it needs nothing from them. The default text asks for the current
+screen and it needs nothing from them. It goes out after the challenge is
+checked, so a spoofed address gets no reply, and bots and local clients do not
+pass through it. Only the 1.3 build refuses: the 1.0 build of this branch stays
+open for tests. The default text asks for the current
 client, because it also reaches Plus clients of another version, and links to
 the OpenCoD2-Plus releases.
 
@@ -98,7 +102,7 @@ and an empty value restores the default.
 |---|---|---|
 | 0 | Measure the network and the tick rate | Done, below |
 | 1 | Script time and game logic independent of `sv_fps`, at 40 Hz first | The checks in [Tick rate](#tick-rate) pass at 20 and 40 |
-| 2 | Handshake, refusal and notice, no format change | A real 1.3 client and a real CoD2x client are refused with the notice, and the Plus client joins a Plus server and a stock 1.3 server |
+| 2 | Handshake, refusal and notice, no format change; the server's side is in, the client's is not | A real 1.3 client and a real CoD2x client are refused with the notice, and the Plus client joins a Plus server and a stock 1.3 server |
 | 3 | A format that carries the tick rate | Measured against milestone 0 at the chosen rate, with a real match |
 
 Milestone 3 chooses from the table below. The gate of the first version of this

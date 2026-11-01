@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-01 — Plus handshake on the server
+
+- The 1.3 build of `plus` now takes only clients that send `plus\121` and tells the rest to update, in the `error` packet the bans use, after the challenge check so that spoofed addresses get nothing. It answers `connectResponse 121`, which is all a client needs to tell a Plus server from a stock one.
+- Nothing stores the version yet, because no format depends on it. The 1.0 build stays open so that tests with stock clients keep working.
+- Left open: the client has to send the key, and until then nobody can join the 1.3 build. A real 1.3 and CoD2x client have not seen the notice; the test client has.
+
 ## 2026-11-01 — 40 Hz played
 
 - The maintainer played on a public server with this branch's 1.0 build at `sv_fps` 40 and noticed no difference from 20 Hz: the game's pace held.
