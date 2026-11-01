@@ -48,6 +48,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 ## Compatibility and server behaviour
 
 - **CoD2 Plus handshake:** on the `plus` branch the 1.3 build only takes the CoD2 Plus client, and tells any other client to update. The 1.0 build, bots and local clients are not affected.
+- **CoD2 Plus snapshots:** on the `plus` branch the 1.3 build sends the CoD2 Plus client entity times as a short offset, about 12% less traffic at 40 Hz. Plus version 122 needs the matching client.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
 - **20% less traffic to clients:** the snapshot writer sent every field of a changed entity in full, even the ones that had not changed. It now marks them as unchanged, as the original does, with the same network format, so every client benefits.
 - **Master servers:**

@@ -136,6 +136,7 @@ def check_client(port, protocol, password, game_log, check):
         check('client parses snapshots', frames and entities and client.parsed_clean == client.parsed,
               f'{len(frames)} snapshots, {client.parsed_clean} of {client.parsed} messages clean, '
               f'{entities} entities' + (f', {client.parse_errors[0]}' if client.parse_errors else ''))
+        check('a client gets the snapshots of its version', frames and all(f['plus'] == (protocol == 118) for f in frames))
         check('client receives server commands', any('smokesnap' in c for f in frames for c in f['commands']))
 
         client.command(server_id, 'userinfo "\\name\\smokerenamed\\rate\\25000\\snaps\\20"')
@@ -429,7 +430,7 @@ def check_connect_limit(port, protocol, check):
             refused = old.connect(protocol, 'old', plus=120)
             check('another Plus version is told to update', refused is not None and 'OpenCoD2-Plus' in refused, str(refused))
             refused = plus.connect(protocol, 'plus')
-            check('a Plus client is told the version', refused is None and plus.connect_reply.split()[1:] == ['121'],
+            check('a Plus client is told the version', refused is None and plus.connect_reply.split()[1:] == ['122'],
                   refused or plus.connect_reply)
         finally:
             plain.close()

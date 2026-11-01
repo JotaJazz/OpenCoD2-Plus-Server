@@ -192,6 +192,7 @@ typedef struct client_s
 	bool			sendVoice;
 	char PBguid[33];
 	char clientPBguid[33];
+	int plusVersion; // docs/architecture/plus-protocol.md
 } client_t;
 
 typedef struct archivedSnapshot_s

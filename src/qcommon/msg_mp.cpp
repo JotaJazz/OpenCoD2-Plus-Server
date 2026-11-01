@@ -1,4 +1,5 @@
 #include "qcommon.h"
+#include "plus_format.h"
 
 static huffman_t msgHuff;
 static qboolean msgInit = qfalse;
@@ -2409,6 +2410,8 @@ void MSG_ReadDeltaEntity( msg_t *msg, entityState_t *from, entityState_t *to, in
 MSG_WriteDeltaField
 ==============
 */
+int msg_plusSnapshotTime;
+
 void MSG_WriteDeltaField( msg_t *msg, byte *from, byte *to, const netField_t *field )
 {
 	int *fromF, *toF;
@@ -2423,6 +2426,20 @@ void MSG_WriteDeltaField( msg_t *msg, byte *from, byte *to, const netField_t *fi
 	}
 
 	MSG_WriteBit1( msg );  // changed
+
+	if ( msg_plusSnapshotTime && field == entityStateFields ) // pos.trTime
+	{
+		unsigned offset = Plus_TimeOffset( msg_plusSnapshotTime, *toF );
+
+		if ( offset < PLUS_TIME_OFFSET_LIMIT )
+		{
+			MSG_WriteBit1( msg );
+			MSG_WriteBits( msg, offset, PLUS_TIME_OFFSET_BITS );
+			return;
+		}
+
+		MSG_WriteBit0( msg ); // too far: as stock
+	}
 
 	if ( field->bits == 0 )
 	{

@@ -192,7 +192,7 @@ class Client:
                 if line.startswith(reply) or line.startswith('error'):
                     return line
 
-    def connect(self, protocol, name, plus=121):
+    def connect(self, protocol, name, plus=122):
         """Returns None once connected, otherwise the server's reply. plus is the
         CoD2 Plus version to send, or None for a stock client."""
         self.protocol = protocol

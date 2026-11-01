@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-01 — Plus version 122: entity time as an offset
+
+- The maintainer took the `pos.trTime` offset alone: no library, no dictionary. A Plus snapshot has its own message byte, so demos, stock servers and the client's local game need no state; the first design kept the version on the client, and demos had no way to carry it.
+- The server now stores each client's Plus version, which picks the byte.
+- Left open: a real match at 40 Hz, which is what closes milestone 3 and gives real offsets, and the smoke test's flatline check, which sometimes reads a normal heartbeat first on the 1.0 build.
+
 ## 2026-11-01 — network measured at 40 Hz
 
 - At 40 Hz a message is about 250 bytes and 0.45–0.61% pass what `rate` 25000 fits, so the rate fits without a new format; a format buys margin, not the tick rate.

@@ -8,9 +8,9 @@ This file is the source of truth; OpenCoD2-Plus follows it. The decision is
 | Field | Value |
 |---|---|
 | Name | CoD2 Plus |
-| Plus version | 121 |
+| Plus version | 122 |
 | Base | The 1.3 build (`make PROTOCOL=118`) |
-| State | Second version: milestones 0 and 2 are done, and milestone 1 lacks a player on the internet |
+| State | Third version: milestones 0 and 2 are done, milestone 1 lacks a player on the internet, and milestone 3's format is in and lacks a real match |
 
 ## Goals
 
@@ -37,9 +37,9 @@ These would make the work a failure even if it ran:
 ## Numbers
 
 Stock uses 115 (1.0) and 118 (1.3), Game Pass 119, CoD2x 120. CoD2x clients
-drop info replies whose `protocol` is not 118 or 120, so a server announcing
-121 would vanish from their browser. The number is therefore never announced:
-`protocol` stays 118, and 121 only appears in the handshake.
+drop info replies whose `protocol` is not 118 or 120, so a server announcing a
+Plus version would vanish from their browser. It is therefore never announced:
+`protocol` stays 118, and the Plus version only appears in the handshake.
 
 ## Handshake
 
@@ -50,11 +50,11 @@ list, and no client needs to look at a server before connecting.
    its Plus version, next to the usual `protocol\118`. Stock servers do not
    read it. The key is set for that packet only, not as a user variable.
 2. The server compares it with its own Plus version.
-   - Equal: it answers `connectResponse 121`. The client slot stores it once a
-     format depends on it.
+   - Equal: it answers `connectResponse 122`, and the client slot stores the
+     version, which chooses the format of that client's snapshots.
    - Anything else, or no key: it refuses the client with the update notice.
-3. The client uses the Plus format only if the answer's argument equals its
-   own version. A bare answer comes from a stock server, and means 1.3.
+3. The client keeps no state from the answer: each snapshot says its format
+   ([Format](#format)). A bare answer comes from a stock server.
 
 Every incompatible change raises the Plus version.
 
@@ -75,6 +75,23 @@ the OpenCoD2-Plus releases.
 
 `sv_plusNotice` holds the text, for admins who need another language or link,
 and an empty value restores the default.
+
+## Format
+
+Version 122 changes one thing. A Plus snapshot has its own message byte,
+`svc_snapshotPlus` (8, after `svc_EOF`, so that the stock numbers stay), and is
+the same as `svc_snapshot` except for the changed `pos.trTime` of an entity: a
+bit that is 1 when 11 bits follow, the snapshot's time minus `pos.trTime`, and
+that is 0 when the stock encoding of the field follows, for a time ahead of the
+snapshot or 2,048 ms or more behind it. Gamestate baselines, archived entities
+and everything else stay stock.
+
+The byte is what makes a message readable alone: a demo plays with no record of
+the server, a stock server never sends it, and the client's local game, which
+has its own server code, keeps writing `svc_snapshot`.
+
+`src/qcommon/plus_format.h` holds the offset and is vendored; each side has its
+own field code, `MSG_WriteDeltaField` here and `MSG_ReadDeltaField` there.
 
 ## Where the format changes
 
@@ -103,12 +120,13 @@ and an empty value restores the default.
 | 0 | Measure the network and the tick rate | Done, below |
 | 1 | Script time and game logic independent of `sv_fps`, at 40 Hz first | The checks in [Tick rate](#tick-rate) pass at 20 and 40 |
 | 2 | Handshake, refusal and notice, no format change | Done on 2026-11-01: a real 1.3 client and a real CoD2x client are refused with the notice, and the Plus client joins a Plus server and the original 1.3 executable run as a dedicated server |
-| 3 | A format that carries the tick rate | Measured against milestone 0 at the chosen rate, with a real match |
+| 3 | A format that carries the tick rate: the [offset](#format) | In; left to do, measured in a real match at 40 Hz |
 
-Milestone 3 chooses from the table below. The gate of the first version of this
-document (20% less, one point of a core) is gone: at 60 Hz a client needs about
-25 KB/s, right at the `rate` limit of 25000, so the question is what fits, and
-the measurements have to be repeated at that rate.
+The gate of the first version of this document (20% less, one point of a core)
+is gone: at 60 Hz a client needs about 25 KB/s, right at the `rate` limit of
+25000, so the question is what fits. Milestone 3 chose from
+[its measurements](#milestone-3-measurements) at 40 Hz: the offset alone, as it
+needs no library, and a shorter code can follow once real offsets are known.
 
 Stability work that is not about the protocol goes to `master` when it is a
 fix for stock clients too.

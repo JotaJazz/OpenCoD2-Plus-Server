@@ -1027,7 +1027,8 @@ gotnewcl:
 
 	// send the connect packet to the client
 #if PROTOCOL_VERSION == 118
-	if ( atoi( Info_ValueForKey( userinfo, "plus" ) ) == PLUS_VERSION )
+	newcl->plusVersion = atoi( Info_ValueForKey( userinfo, "plus" ) );
+	if ( newcl->plusVersion == PLUS_VERSION )
 		NET_OutOfBandPrint( NS_SERVER, from, va( "connectResponse %i", PLUS_VERSION ) );
 	else // bots and local clients, which skip the check above
 #endif
