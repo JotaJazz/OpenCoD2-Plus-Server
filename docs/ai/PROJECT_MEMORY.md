@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-01 — Plus handshake proven with real clients
+
+- A real 1.3 client and a real CoD2x client were refused by the 1.3 build of `plus`, and the maintainer read the notice on both. The client's console log does not record it, so the screen is the only evidence.
+- The Plus client reached the team menu on the 1.3 build of `plus` and on the original `CoD2MP_s.exe` run as a dedicated server, so the `plus` key does not bother a stock server. That closes milestone 2.
+- Left open: all of it ran on a LAN address, without a CD key check, and with the handshake alone: no format depends on it yet.
+
 ## 2026-11-01 — Plus handshake on the server
 
 - The 1.3 build of `plus` now takes only clients that send `plus\121` and tells the rest to update, in the `error` packet the bans use, after the challenge check so that spoofed addresses get nothing. It answers `connectResponse 121`, which is all a client needs to tell a Plus server from a stock one.

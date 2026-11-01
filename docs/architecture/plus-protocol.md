@@ -10,7 +10,7 @@ This file is the source of truth; OpenCoD2-Plus follows it. The decision is
 | Name | CoD2 Plus |
 | Plus version | 121 |
 | Base | The 1.3 build (`make PROTOCOL=118`) |
-| State | Second version: milestones 0 and 1 and the server's side of 2 are in |
+| State | Second version: milestones 0 and 2 are done, and milestone 1 lacks a player on the internet |
 
 ## Goals
 
@@ -102,7 +102,7 @@ and an empty value restores the default.
 |---|---|---|
 | 0 | Measure the network and the tick rate | Done, below |
 | 1 | Script time and game logic independent of `sv_fps`, at 40 Hz first | The checks in [Tick rate](#tick-rate) pass at 20 and 40 |
-| 2 | Handshake, refusal and notice, no format change; the server's side is in, the client's is not | A real 1.3 client and a real CoD2x client are refused with the notice, and the Plus client joins a Plus server and a stock 1.3 server |
+| 2 | Handshake, refusal and notice, no format change | Done on 2026-11-01: a real 1.3 client and a real CoD2x client are refused with the notice, and the Plus client joins a Plus server and the original 1.3 executable run as a dedicated server |
 | 3 | A format that carries the tick rate | Measured against milestone 0 at the chosen rate, with a real match |
 
 Milestone 3 chooses from the table below. The gate of the first version of this
