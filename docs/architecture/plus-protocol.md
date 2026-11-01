@@ -218,6 +218,45 @@ is estimated from a bit-cost model of the same field stream, without Huffman:
 No two candidates were tried together. At 64 clients and 20 snapshots a second
 (1,280 messages), zstd 9 costs 1.2% of a core.
 
+## Milestone 3 measurements
+
+Measured on 2026-11-01 with the 1.3 build at `sv_fps` 40, `g_forceSnaps` 40 and
+`g_forceRate` 40000: 20 protocol clients and 20 bots in tdm on `mp_toujane` and
+`mp_carentan`, about 90 s each, over loopback. The candidates of the table above
+save a little less at 40 Hz than at 20, because the messages are smaller:
+
+| Candidate | 20 Hz | 40 Hz |
+|---|---|---|
+| New order-0 Huffman table | 5.3% | 4.8–5.5% |
+| zstd 3 with a trained dictionary | 7.5–8.8% | 4.5–5.8% |
+| zstd 9 with a trained dictionary | 11.8–13.4% | 10.1–11.2% |
+
+| Rate | Bytes a message | 99th percentile | Over the 577 bytes of `rate` 25000 at 40 Hz |
+|---|---|---|---|
+| 20 Hz | 303–341 | 705–801 | not a limit at this rate |
+| 40 Hz | 245–251 | 492–537 | 0.45–0.61% |
+
+`pos.trTime` is the largest field: most entities change it in every snapshot,
+and `MSG_WriteDeltaField` sends it as 32 bits, or 37–41% of the bytes that field
+model counts. Written both ways on the same snapshots, sending the snapshot's
+time minus `pos.trTime` in a flag and 11 bits, with no decoder behind it:
+
+| Map | Messages | Today | With the offset | Largest 1% |
+|---|---|---|---|---|
+| `mp_toujane` | 127,768 | 262 bytes | 233 (−11.0%) | 539 to 498 |
+| `mp_carentan` | 127,877 | 214 bytes | 187 (−12.6%) | 417 to 381 |
+
+That matches zstd 9 with one field, no library and no dictionary. Of the offsets,
+0.3–0.5% needed the escape, up to 123 s old, and none was negative. For a player
+`pos.trTime` is `ps.commandTime`, so the common offsets of whole frames, 25 ms for
+bots and about 1,025 ms for test clients, come from how those send commands: a
+code shorter than 11 bits has to wait for a real match. The rest of the bytes are mostly the floats in
+`pos.trBase`, `pos.trDelta` and `angles2`, which XOR barely shrinks.
+
+The per-field bit model of `.fld` counts each field three times, because the
+paired writes log too: its shares hold, and comparing them with bytes on the
+wire does not.
+
 ## Two repositories
 
 | Step | Where |

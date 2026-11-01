@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-01 — network measured at 40 Hz
+
+- At 40 Hz a message is about 250 bytes and 0.45–0.61% pass what `rate` 25000 fits, so the rate fits without a new format; a format buys margin, not the tick rate.
+- `pos.trTime` goes out as 32 bits and is the largest field. Written as an offset from the snapshot's time on the same snapshots, it saves 11.0–12.6%, as much as zstd 9 with a dictionary, with no library: numbers in [plus-protocol.md](../architecture/plus-protocol.md#milestone-3-measurements).
+- Left open: which format milestone 3 takes, a decoder, and real offsets: test clients and bots do not show a real player's. The per-field model counted fields three times; its shares hold, and its comparison with wire bytes never did.
+
 ## 2026-11-01 — Plus handshake proven with real clients
 
 - A real 1.3 client and a real CoD2x client were refused by the 1.3 build of `plus`, and the maintainer read the notice on both. The client's console log does not record it, so the screen is the only evidence.
