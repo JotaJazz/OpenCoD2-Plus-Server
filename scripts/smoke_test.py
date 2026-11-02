@@ -138,6 +138,21 @@ def check_client(port, protocol, password, game_log, check):
               f'{entities} entities' + (f', {client.parse_errors[0]}' if client.parse_errors else ''))
         check('client receives server commands', any('smokesnap' in c for f in frames for c in f['commands']))
 
+        # someone behind the same IP who guesses the qport must not take the
+        # client's address, but a client whose port changes keeps playing
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as thief:
+            header = (0x7ffffff0).to_bytes(4, 'little') + client.qport.to_bytes(2, 'little')
+            thief.sendto(header + bytes(16), ('127.0.0.1', port))
+            thief.sendto(PREFIX + b'v\0' + client.qport.to_bytes(2, 'little') + bytes(8), ('127.0.0.1', port))
+            time.sleep(0.2)
+        client.command(server_id, 'userinfo "\\name\\smokeqport\\rate\\25000\\snaps\\20"')
+        check('a guessed qport keeps the client', wait_for(lambda: listed('smokeqport')))
+        moved = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        client.sock.close()
+        client.sock = moved
+        client.command(server_id, 'userinfo "\\name\\smokemoved\\rate\\25000\\snaps\\20"')
+        check('a translated port keeps the client', wait_for(lambda: listed('smokemoved')))
+
         client.command(server_id, 'userinfo "\\name\\smokerenamed\\rate\\25000\\snaps\\20"')
         check('client command runs', wait_for(lambda: listed('smokerenamed')),
               ', '.join(players(port) or {}))
