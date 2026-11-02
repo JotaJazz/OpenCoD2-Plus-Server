@@ -166,6 +166,15 @@ def check_client(port, protocol, password, game_log, check):
         check('fragmented client message runs', packets > 1 and wait_for(lambda: listed('smokefragment2')),
               f'{packets} packets')
 
+        # one message runs at most 64 commands, the rest when they come again
+        first = client.command_sequence + 1
+        cap = 'userinfo "\\name\\smokecap%s\\rate\\25000\\snaps\\20"'
+        client.commands(server_id, [cap % 'a'] * 99 + [cap % 'b'])
+        capped = wait_for(lambda: listed('smokecapa')) and not listed('smokecapb')
+        check('one message runs at most 64 commands', capped, ', '.join(players(port) or {}))
+        client.resend(server_id, first + 64)
+        check('the rest run when sent again', wait_for(lambda: listed('smokecapb')))
+
         # line breaks in a name or a chat message must not start a fake log
         # line, and a say right after a userinfo must not be flood protected
         client.commands(server_id, ['userinfo "\\name\\smokelog\nfakename\\rate\\25000\\snaps\\20"',

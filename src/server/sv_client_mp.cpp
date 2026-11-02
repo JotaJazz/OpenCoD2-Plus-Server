@@ -2042,6 +2042,28 @@ static void SV_VerifyIwds_f( client_t *cl )
 			break;
 		}
 
+		// get the pure checksums of the pk3 files loaded by the server
+		pPaks = FS_LoadedIwdPureChecksums();
+		Cmd_TokenizeString( pPaks );
+		nServerPaks = Cmd_Argc();
+		if ( nServerPaks > 1024 )
+		{
+			nServerPaks = 1024;
+		}
+
+		for ( i = 0; i < nServerPaks; i++ )
+		{
+			nServerChkSum[i] = atoi( Cmd_Argv( i ) );
+		}
+
+		// New: the check below costs the square of the client's count, and
+		// distinct checksums all loaded by the server are at most as many
+		if ( nClientPaks > nServerPaks )
+		{
+			bGood = qfalse;
+			break;
+		}
+
 		// make sure none of the client check sums are the same
 		// so the client can't send 5 the same checksums
 		for ( i = 0; i < nClientPaks; i++ )
@@ -2066,20 +2088,6 @@ static void SV_VerifyIwds_f( client_t *cl )
 		if ( bGood == qfalse )
 		{
 			break;
-		}
-
-		// get the pure checksums of the pk3 files loaded by the server
-		pPaks = FS_LoadedIwdPureChecksums();
-		Cmd_TokenizeString( pPaks );
-		nServerPaks = Cmd_Argc();
-		if ( nServerPaks > 1024 )
-		{
-			nServerPaks = 1024;
-		}
-
-		for ( i = 0; i < nServerPaks; i++ )
-		{
-			nServerChkSum[i] = atoi( Cmd_Argv( i ) );
 		}
 
 		// check if the client has provided any pure checksums of pk3 files not loaded by the server
@@ -2454,7 +2462,7 @@ void SV_ExecuteClientCommand( client_t *cl, const char *s, qboolean clientOK )
 SV_ClientCommand
 ===============
 */
-static qboolean SV_ClientCommand( client_t *cl, msg_t *msg )
+static qboolean SV_ClientCommand( client_t *cl, msg_t *msg, int *executed )
 {
 	int seq;
 	const char  *s;
@@ -2481,6 +2489,14 @@ static qboolean SV_ClientCommand( client_t *cl, msg_t *msg )
 	{
 		Com_Printf( "Client %s lost %i clientCommands\n", cl->name, seq - cl->lastClientCommand + 1 );
 		SV_DropClient( cl, "EXE_LOSTRELIABLECOMMANDS" );
+		return qfalse;
+	}
+
+	// New: flood protection only keeps commands from the game, so one
+	// message of hundreds of commands ran them all in one frame. The client
+	// sends again every command not yet acknowledged
+	if ( ++*executed > 64 )
+	{
 		return qfalse;
 	}
 
@@ -2542,6 +2558,7 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 	byte msgBuf[MAX_MSGLEN];
 	msg_t decompressMsg;
 	int c;
+	int executed = 0;
 
 	assert(cl - svs.clients >= 0 && cl - svs.clients < MAX_CLIENTS);
 
@@ -2610,7 +2627,7 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 		{
 			break;
 		}
-		if ( !SV_ClientCommand( cl, &decompressMsg ) )
+		if ( !SV_ClientCommand( cl, &decompressMsg, &executed ) )
 		{
 			return; // we couldn't execute it because of the flood protection
 		}
