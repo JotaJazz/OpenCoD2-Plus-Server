@@ -480,10 +480,20 @@ const char* NET_AdrToStringNoPort( netadr_t a )
 	return s;
 }
 
+// The map name builds the link's paths: "../x" pointed them outside the
+// library and the game folder. Without a separator ".." is just a file name
+static bool manymaps_validName(const char *mapname)
+{
+	return !strpbrk(mapname, "/\\:");
+}
+
 void manymaps_prepare(const char *mapname, int read)
 {
 	char map_check[MAX_OSPATH];
 	char library_path[MAX_OSPATH];
+
+	if (!manymaps_validName(mapname))
+		return;
 
 	dvar_t *fs_homepath = Dvar_FindVar("fs_homepath");
 	dvar_t *fs_game = Dvar_FindVar("fs_game");
@@ -740,7 +750,7 @@ bool hook_SV_MapExists(const char *mapname)
 {
 	bool map_exists = SV_MapExists(mapname);
 
-	if (map_exists)
+	if (map_exists || !manymaps_validName(mapname))
 	{
 		return map_exists;
 	}

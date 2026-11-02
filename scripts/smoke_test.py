@@ -591,6 +591,19 @@ def main():
                     check_connect_limit(port, int(protocol), check)
                     check_challenge_during_queries(port, check)
 
+                # manymaps must not take a map name that leaves its library
+                os.makedirs(os.path.join(home, 'library'))
+                open(os.path.join(home, 'smoke_escape.iwd'), 'wb').close()
+                rcon(port, password, 'fs_library ' + os.path.join(home, 'library'))
+                reply = rcon(port, password, 'map ../smoke_escape')
+                rcon(port, password, 'fs_library ""')
+                escaped = os.path.join(os.path.dirname(home), 'smoke_escape.iwd')
+                linked = os.path.lexists(escaped)
+                if linked:
+                    os.remove(escaped)
+                check('manymaps refuses ../ in a map name', not linked and 'NEW LINK' not in reply,
+                      reply.strip().replace('\n', ' ')[:80])
+
 
                 time.sleep(2)
                 check('server still running', server.poll() is None)
