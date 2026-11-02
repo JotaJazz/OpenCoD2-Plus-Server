@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — security audit of the network surface
+
+- A read-only audit of what a remote host reaches (connectionless packets, the handshake, client messages, game input, libcod) found no memory corruption or crash; it found logic and denial-of-service issues, nine fixed: a client's port taken only from its own sequence and never from voice, an ack of a message never sent dropped, a connected challenge's GUID kept from later authorize replies, 64 client commands per message, `cp` bounded by the server's iwds, download acks only for blocks read, a seeded rate limiter hash, 10 rate limit reports a second, query challenges up to 128 characters, manymaps names without separators; a warning about player text in unsafe builtins.
+- The smoke test reproduces four of them (guessed qport, 100 commands in a message, an over-long challenge, `map ../x`) and fails without the fix; smoke passes on 1.0 x64, x86 and 1.3.
+- Rejected: acks checked against `downloadXmitBlock` (resends move it back and would drop a real client); one authorize reply per challenge (a forged one arrives first anyway). Left open: forged authorize replies, shared query limits, votes and smaller items ([../roadmap/debt.md](../roadmap/debt.md)).
+
 ## 2026-10-31 — unchanged fields no longer resent
 
 - `MSG_WriteDeltaField` compared the field pointers, which never match, so 47–49% of the fields written were unchanged values sent in full; the bug came from upstream. Written both ways on the same snapshots in one server, comparing values saves 20.5% on `mp_toujane` and 19.8% on `mp_carentan`, from 499 to 396 and from 386 to 309 bytes a message, with 20 test clients and 20 bots.
