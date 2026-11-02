@@ -526,6 +526,13 @@ void SVC_Info( netadr_t from )
 
 	// echo back the parameter to status. so servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
+	// New: as ioq3, a challenge that filled the info string made every later
+	// key fail and print the whole string, about 16 KB of log per request
+	if ( strlen( Cmd_Argv( 1 ) ) > 128 )
+	{
+		return;
+	}
+
 	Info_SetValueForKey( infostring, "challenge", Cmd_Argv( 1 ) );
 	Info_SetValueForKey( infostring, "protocol", va( "%i", from.altPort ? ALT_PORT_PROTOCOL : PROTOCOL_VERSION ) );
 	Info_SetValueForKey( infostring, "hostname", sv_hostname->current.string );
@@ -680,6 +687,13 @@ void SVC_Status( netadr_t from )
 
 	// echo back the parameter to status. so master servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
+	// New: as ioq3, a challenge that filled the info string made every later
+	// key fail and print the whole string, about 16 KB of log per request
+	if ( strlen( Cmd_Argv( 1 ) ) > 128 )
+	{
+		return;
+	}
+
 	Info_SetValueForKey( infostring, "challenge", Cmd_Argv( 1 ) );
 
 	if ( from.altPort )
@@ -780,6 +794,13 @@ void SVC_GameCompleteStatus( netadr_t from )
 
 	// echo back the parameter to status. so master servers can use it as a challenge
 	// to prevent timed spoofed reply packets that add ghost servers
+	// New: as ioq3, a challenge that filled the info string made every later
+	// key fail and print the whole string, about 16 KB of log per request
+	if ( strlen( Cmd_Argv( 1 ) ) > 128 )
+	{
+		return;
+	}
+
 	Info_SetValueForKey( infostring, "challenge", Cmd_Argv( 1 ) );
 
 	// add "demo" to the sv_keywords if restricted

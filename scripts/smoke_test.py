@@ -573,6 +573,7 @@ def main():
             if info:
                 header, values = info
                 check('getinfo reply', header == 'infoResponse' and values.get('challenge') == 'smoke')
+                check('over-long getinfo challenge ignored', query(port, 'getinfo ' + 'x' * 1000, 1.0) is None)
                 check('hostname', values.get('hostname') == hostname, values.get('hostname', ''))
                 protocol = values.get('protocol', '')
                 if args.protocol:

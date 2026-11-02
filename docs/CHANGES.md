@@ -18,6 +18,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 
 ## Security and stability
 
+- **Over-long query challenges ignored:** a `getinfo` or `getstatus` whose challenge filled the info string made every later key fail and print the whole string, about 16 KB of console and log per request. As in ioquake3, a challenge over 128 characters gets no reply.
 - **Rate limiter reports throttled:** each request the limiter dropped started a script thread (`CodeCallback_CLSpam`, or `CodeCallback_DPrintf` through the debug print), so a flood from forged addresses turned into script work. At most 10 drops a second are reported now.
 - **Rate limiter table keyed:** addresses were spread over the table's 1024 chains by a fixed sum of their bytes, so forged packets from chosen addresses could fill one chain and make every lookup walk it. The spread now uses a random seed chosen at startup.
 - **Download acks checked:** `nextdl` for the block the client was on moved the window even when that block had never been read, so a burst of them made the next frame read many blocks at once. Only blocks already read can be acknowledged.
