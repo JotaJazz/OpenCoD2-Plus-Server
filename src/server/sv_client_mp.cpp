@@ -2243,7 +2243,10 @@ static void SV_NextDownload_f( client_t *cl )
 	assert(cl - svs.clients >= 0 && cl - svs.clients < MAX_CLIENTS);
 	int block = atoi( Cmd_Argv( 1 ) );
 
-	if ( block == cl->downloadClientBlock )
+	// New: and only of a block already read. Acks of blocks never sent moved
+	// the window past the file read so far, and the next frame read all the
+	// blocks in between at once
+	if ( block == cl->downloadClientBlock && block < cl->downloadCurrentBlock )
 	{
 		Com_DPrintf( "clientDownload: %d : client acknowledge of block %d\n", cl - svs.clients, block );
 
