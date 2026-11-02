@@ -955,6 +955,12 @@ void SV_PacketEvent( netadr_t from, msg_t *msg )
 				return;
 			}
 
+			// New: an acknowledge of a message never sent gave bad deltas
+			if ( cl->messageAcknowledge > cl->netchan.outgoingSequence )
+			{
+				return;
+			}
+
 			cl->reliableAcknowledge = MSG_ReadLong(msg);
 
 			// New: Fix for invalid reliableAcknowledge exploit, see https://github.com/callofduty4x/CoD4x_Server/pull/407
