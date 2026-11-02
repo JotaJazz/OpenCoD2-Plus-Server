@@ -1081,6 +1081,12 @@ void SV_AuthorizeIpPacket( netadr_t from )
 
 	challenge = atoi( SV_Cmd_Argv( 1 ) );
 
+	// New: cleared slots have challenge 0
+	if ( !challenge )
+	{
+		return;
+	}
+
 	for ( i = 0 ; i < MAX_CHALLENGES ; i++ )
 	{
 		if ( svs.challenges[i].challenge == challenge )
@@ -1132,9 +1138,8 @@ void SV_AuthorizeIpPacket( netadr_t from )
 
 	if ( !Q_stricmp( s, "accept" ) )
 	{
-		svs.challenges[i].guid = atoi(SV_Cmd_Argv( 4 ));
-
-		const char *banMessage = SV_ConnectBanMessage( svs.challenges[i].adr, svs.challenges[i].guid );
+		int guid = atoi(SV_Cmd_Argv( 4 ));
+		const char *banMessage = SV_ConnectBanMessage( svs.challenges[i].adr, guid );
 
 		if ( banMessage )
 		{
@@ -1147,6 +1152,10 @@ void SV_AuthorizeIpPacket( netadr_t from )
 
 		if ( !svs.challenges[i].connected )
 		{
+			// New: only before the client connects. A reply can come from
+			// any address, and a reconnect with the same challenge takes
+			// this GUID
+			svs.challenges[i].guid = guid;
 			NET_OutOfBandPrint( NS_SERVER, svs.challenges[i].adr,
 			                    va("challengeResponse %i", svs.challenges[i].challenge) );
 			return;

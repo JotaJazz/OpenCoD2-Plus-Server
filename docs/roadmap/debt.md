@@ -17,6 +17,7 @@ None open. R1 became a known gap; R2–R5 were fixed on 2026-10-24
 | zPAM 4.x needs the CoD2x API (`getHWID`, `match*`, `g_cod2x` ≥ 5) | — | zPAM 3.36 runs on 1.0 and 1.3 |
 | Protocol 119 fragment offset format | `src/qcommon/net_chan_mp.cpp` | Needs a Game Pass client |
 | A `getchallenge` flood that repeats its addresses still delays joins | `SV_GetChallenge` in `src/server/sv_client_mp.cpp` | Two addresses at 10 a second fill the 20 a second for retries. A full answer is a stateless challenge (as a SYN cookie), which reaches the connection and authorize paths |
+| An authorize reply is only checked by its source IP: anyone who can forge the authorize server's address can answer their own challenge with any GUID, taking an admin's GUID or slipping a GUID ban. Do not grant rights by GUID; use rcon, passwords or IP addresses | `SV_AuthorizeIpPacket` in `src/server/sv_client_mp.cpp` | The protocol has no signature, and a forged reply arrives before the real one. Since 2026-11-02 a reply no longer changes the GUID of a challenge that already connected |
 | Script runtime errors cascade outside developer mode | `src/script/scr_vm.cpp` | Stock behaviour |
 | The rcon lockout's entry eviction is untested | `src/server/sv_main_pc_mp.cpp` | Read, never run: `127.x` is exempt from the lockout, so a local test cannot reach it |
 
