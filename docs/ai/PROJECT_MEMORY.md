@@ -16,6 +16,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — milliseconds in float
+
+- 1.3's game code loads 1000 and 0.001 as floats every time (49 and 56 loads), and an exact constant still matters when the product is truncated: 0.7f * 1000 is 699.99998 in double but 700 in float. The shared movement code now multiplies in float for the damage timer, the speed while stunned and the animation lengths at load.
+- The other 1000.0 products are server-only (script fade times, `archiveTime`, turret blends, missile times): the Linux server computed them with x87's 80 bits and the Windows one with 24, so there is no single reference, and they stay.
+- Most remaining fingerprint differences are float assignments, which the 1.3 compiler writes as immediates and SSE loads from memory, so they don't show in 1.3's fingerprint.
+
 ## 2026-11-03 — constants compared with the 1.3 binary
 
 - Every function of a 32-bit build was matched to the stripped 1.3 Linux server (`cod2_lnxded` of CoD2x) by the float constants it loads; most differences were noise (x87 negates with `fchs`, loads 1.0 with `fld1`; loops unrolled; inlining), and `BG_PlayerTouchesItem`, `PM_GetFlinchAnim` and `PM_AdjustAimSpreadScale`'s logic match. The 1.3 game code loads 880 constants as floats and 55 as doubles, all pi-related or a few exact values, so seven inexact double literals became floats: the 1.28 hip spread in the air, ladder side move, damage kick, radius damage box, missile landing angle test, weapon position speed cap and teammates' compass angle.

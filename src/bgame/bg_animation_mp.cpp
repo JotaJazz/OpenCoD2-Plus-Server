@@ -3107,7 +3107,7 @@ void BG_FinalizePlayerAnims()
 		}
 		else
 		{
-			pCurrAnim->duration = (int)(duration * 1000.0);
+			pCurrAnim->duration = (int)(duration * 1000.0f);
 			XAnimGetRelDelta(pXAnims, i, vRot, vDelta, 0, 1);
 			pCurrAnim->moveSpeed = VectorLength(vDelta) / duration;
 
