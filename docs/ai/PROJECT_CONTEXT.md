@@ -22,8 +22,8 @@ server mods.
 - Distributing game files (iwds, stock scripts).
 - Sending changes back upstream.
 - Protocols or features that need a modified client (CoD2x API), except the
-  CoD2 Plus protocol on the `plus` branch
-  ([ADR 0012](../architecture/adr/0012-plus-leaves-1-3-out.md)).
+  CoD2 Plus protocol of the `make PLUS=1` build
+  ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)).
 
 ## Principles
 

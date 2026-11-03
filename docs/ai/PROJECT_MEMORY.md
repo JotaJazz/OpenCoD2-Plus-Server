@@ -5,6 +5,18 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — CoD2 1.3 Plus as a build variant
+
+- The maintainer wanted one line of development. Plus moved from the `plus` branch behind `#ifdef COD2_PLUS`, built by `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)); script time, `trDuration` and the `g_forceRate`/`g_forceSnaps` caps went behind it too, as they were not before. Without it the 1.0 and 1.3 x64 objects equal `master`'s byte for byte, apart from the build time in `unix_main.o`.
+- `smoke_test.py --plus` runs the Plus checks; smoke passes on 1.0, 1.3 and 1.3 Plus. CI builds the Plus variant; work goes on `dev`.
+- Rejected: a runtime switch (ADR 0012's mixed mode). Left open: how OpenCoD2-Plus follows, decided in that repository.
+
+## 2026-11-02 — upstream review to 2d12404
+
+- Four voron00 commits read, none taken (merge `-s ours`). The msg rework writes the same bits and only adds asserts that `NDEBUG` drops; their `realIP` fix is for code we do not use.
+- `I_sin`, `I_cos`, `I_asin`, `I_acos`, `FastFloor` and `FastCeil` round double arguments and results to float even without `USE_SSE2`, which changes mantle, weapon spread and bob and the GSC math builtins in the last bit: left out with SSE ([../roadmap/debt.md](../roadmap/debt.md)).
+- Found on the way: `getIP()` returns `""` for a client on `127.0.0.1` that came without a proxy (read, not run).
+
 ## 2026-11-02 — the notice says "1.3 Plus"
 
 - `PLUS_NOTICE` and the `sv_plusNotice` description name the CoD2 1.3 Plus client ([ADR 0014](../architecture/adr/0014-name-1-3-plus.md)); the smoke test on the 1.3 build shows the new text.

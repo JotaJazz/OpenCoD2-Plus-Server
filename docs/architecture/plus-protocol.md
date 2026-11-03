@@ -1,15 +1,17 @@
 # CoD2 Plus protocol
 
-The contract between the `plus` branches of CoD2rev-Plus and OpenCoD2-Plus.
+The contract between CoD2rev-Plus's `make PLUS=1` build and OpenCoD2-Plus.
 This file is the source of truth; OpenCoD2-Plus follows it. The decision is
 [ADR 0012](adr/0012-plus-leaves-1-3-out.md), which builds on
-[ADR 0011](adr/0011-plus-protocol.md).
+[ADR 0011](adr/0011-plus-protocol.md); since
+[ADR 0015](adr/0015-plus-as-a-build-variant.md) it is a build variant, not a
+branch.
 
 | Field | Value |
 |---|---|
 | Name | CoD2 Plus; players read "1.3 Plus" ([ADR 0014](adr/0014-name-1-3-plus.md)) |
 | Plus version | 122 |
-| Base | The 1.3 build (`make PROTOCOL=118`) |
+| Base | The 1.3 build, as `make PLUS=1` (`COD2_PLUS`) |
 | State | Third version: milestones 0 and 2 are done, milestone 1 lacks a player on the internet, and milestone 3's format is in and lacks a real match |
 
 ## Goals
@@ -68,8 +70,8 @@ The refusal is an `error` packet with the text, as the ban messages in
 `SV_DirectConnect` (`src/server/sv_client_mp.cpp`), so stock clients show it on
 screen and it needs nothing from them. It goes out after the challenge is
 checked, so a spoofed address gets no reply, and bots and local clients do not
-pass through it. Only the 1.3 build refuses: the 1.0 build of this branch stays
-open for tests. The default text asks for the current
+pass through it. Only the `PLUS=1` build refuses; every other build takes
+stock clients. The default text asks for the current
 client, because it also reaches Plus clients of another version, and links to
 the OpenCoD2-Plus releases.
 
@@ -279,19 +281,16 @@ wire does not.
 
 | Step | Where |
 |---|---|
-| A fix starts on `master` and is merged to `plus` | CoD2rev-Plus |
-| A protocol change starts on `plus`, with this file | CoD2rev-Plus |
-| It is vendored into OpenCoD2-Plus `plus`, and `test/vendored_files.txt` records the revision | OpenCoD2-Plus |
+| A fix or a protocol change starts on `dev`; a protocol change comes with this file and stays behind `COD2_PLUS` | CoD2rev-Plus |
+| It is vendored into OpenCoD2-Plus, and `test/vendored_files.txt` records the revision | OpenCoD2-Plus |
 | The client follows, and is tested against that server | OpenCoD2-Plus |
 | A release is the same tag in both, the server first | Both |
 
-- Code flows one way: from here to OpenCoD2-Plus, never back. Its `main`
-  vendors `master` and its `plus` vendors `plus`.
+- Code flows one way: from here to OpenCoD2-Plus, never back. Which of its
+  branches vendor `dev` or `master` is decided there.
 - A fix found while working on the client is made here first
   ([its vendoring guide](https://github.com/JotaJazz/OpenCoD2-Plus/blob/main/docs/development/vendored.md)).
-- `plus` tags are `plus-vX.Y.Z`, separate from the `master` releases.
-- Merges go from `master` to `plus`, never the reverse. The 1.0 code stays on
-  `plus`, built as today, so those merges stay clean.
+- A release tags `master` once for every build, Plus included.
 
 ## Before a public release
 

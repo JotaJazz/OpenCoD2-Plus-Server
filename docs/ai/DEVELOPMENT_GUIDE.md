@@ -5,13 +5,14 @@ Commands: [../development/building.md](../development/building.md),
 
 ## Workflow
 
-1. Work on a local branch, in batches of related commits.
-2. Verify each batch: `make`, `make PROTOCOL=118`, `make windows`,
-   `make ARCH=x86`, smoke test
-   on 1.0 and 1.3; bots tests and ASan for gameplay or memory changes;
-   `scripts/check_docs.py` when docs changed.
-3. Merge to `master` by fast-forward after the maintainer approves. Push only
-   when asked: CI runs on pushes to `master` and `plus` and on pull requests that touch
+1. Work on a local branch from `dev`, in batches of related commits.
+2. Verify each batch: `make`, `make PROTOCOL=118`, `make PLUS=1`,
+   `make windows`, `make ARCH=x86`, smoke test
+   on 1.0, 1.3 and 1.3 Plus (`--plus`); bots tests and ASan for gameplay or
+   memory changes; `scripts/check_docs.py` when docs changed.
+3. Merge to `dev` by fast-forward after the maintainer approves; `dev` reaches
+   `master` for a release. Push only
+   when asked: CI runs on pushes to `master` and `dev` and on pull requests that touch
    `src/`, the `Makefile` or the workflow.
 4. Watch the CI run after a push.
 

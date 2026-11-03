@@ -1,6 +1,6 @@
 # 0012. Plus leaves 1.3 clients out and raises the tick rate
 
-- Status: Accepted
+- Status: Accepted; its branch superseded by [0015](0015-plus-as-a-build-variant.md)
 - Date: 2026-10-31
 
 ## Context

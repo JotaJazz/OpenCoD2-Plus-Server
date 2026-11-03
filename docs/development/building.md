@@ -11,11 +11,12 @@ This page covers what a contributor needs on top.
 | `make PROTOCOL=118` | Linux 64-bit, 1.3 → same name in `bin/` |
 | `make ARCH=x86` | Linux 32-bit ([ADR 0010](../architecture/adr/0010-64-bit-default-on-linux.md)); combines with `PROTOCOL=118` → same name in `bin/` |
 | `make ARCH=arm64` | Linux aarch64, experimental ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)), built natively on the ARM host → same name in `bin/` |
+| `make PLUS=1` | CoD2 1.3 Plus: the 1.3 build with `COD2_PLUS`, only for the Plus client ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)); combines with `ARCH` and `windows` → same name in `bin/` |
 | `make windows` | MinGW cross-build → `bin/cod2rev_win32.exe` (`PROTOCOL=118` for 1.3) |
 | `make BIN_DIR=<folder>` | Same build into another folder, to keep 1.0 and 1.3 side by side |
 | `make clean` | Removes the binary and the objects |
 
-- Objects go to `obj/<binary>_<protocol>` (`_x64` or `_arm64` added for 64-bit), so
+- Objects go to `obj/<binary>_<protocol>` (`_x64` or `_arm64` added for 64-bit, `_plus` for `PLUS=1`), so
   switching platform, version or architecture does not rebuild everything;
   the binary name in `bin/` is shared.
 - The 32-bit Linux build needs `gcc-multilib` and `g++-multilib`, the
@@ -39,15 +40,16 @@ This page covers what a contributor needs on top.
 
 ## Before committing a change under src/
 
-1. `make` and `make PROTOCOL=118`; `make ARCH=x86` for changes that touch
-   pointers, sizes or the Makefile.
+1. `make`, `make PROTOCOL=118` and `make PLUS=1`; `make ARCH=x86` for changes
+   that touch pointers, sizes or the Makefile. Read both sides of
+   `#ifdef COD2_PLUS`.
 2. `make windows`.
-3. The smoke test for both versions ([testing.md](testing.md)).
+3. The smoke test for 1.0, 1.3 and 1.3 Plus ([testing.md](testing.md)).
 4. For memory-sensitive changes, an ASan run with bots.
 
-CI (`.github/workflows/build.yml`) builds the six variants (Linux 32 and
-64-bit, Windows, each for 1.0 and 1.3) on pushes to
-`master` and on pull requests that change `src/`, the `Makefile` or the
+CI (`.github/workflows/build.yml`) builds the seven variants (Linux 32 and
+64-bit, Windows, each for 1.0 and 1.3, and 1.3 Plus on Linux 64-bit) on pushes
+to `master` and `dev` and on pull requests that change `src/`, the `Makefile` or the
 workflow, and on a manual run (`workflow_dispatch`).
 
 ## MySQL

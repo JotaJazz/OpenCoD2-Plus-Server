@@ -17,12 +17,13 @@ functions and a bots mod.
   and explain the original bug in the commit.
 - Script extensions go in `src/libcod`, attached with `#ifdef LIBCOD` hooks;
   hardening and admin fixes are small changes in the engine file they fix.
-- Check both sides of `#ifdef LIBCOD` and of `#if PROTOCOL_VERSION`; build
-  `make`, `make PROTOCOL=118`, `make windows` and `make ARCH=x86` before
-  committing under `src/`.
+- Check both sides of `#ifdef LIBCOD`, of `#if PROTOCOL_VERSION` and of
+  `#ifdef COD2_PLUS`; build `make`, `make PROTOCOL=118`, `make PLUS=1`,
+  `make windows` and `make ARCH=x86` before committing under `src/`.
 - Never change network formats, engine limits or client-predicted behaviour
-  on `master`. `plus` serves only the Plus client and may change them
-  ([ADR 0012](docs/architecture/adr/0012-plus-leaves-1-3-out.md)).
+  outside `#ifdef COD2_PLUS`. The `make PLUS=1` build serves only the CoD2 1.3
+  Plus client and may change them
+  ([ADR 0015](docs/architecture/adr/0015-plus-as-a-build-variant.md)).
 - Keep each file's line endings (`.gitattributes` is `* -text`).
 - Do not edit vendored libraries; do not add runtime dependencies.
 - Tests need a CoD2 folder with only stock iwds; stop test servers by their PID

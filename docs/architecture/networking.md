@@ -33,7 +33,7 @@ Huffman: `src/qcommon/msg_mp.cpp`.
   long for 118 and a short otherwise (`Netchan_Process`,
   `Netchan_TransmitNextFragment`), and 119 has one stat less in the
   playerstate (`src/qcommon/msg_mp.cpp`).
-- The `plus` branch serves only the Plus client
+- The `make PLUS=1` build serves only the Plus client
   ([plus-protocol.md](plus-protocol.md)).
 - `net_altPort` (1.0 build) opens a second socket: `netadr_t.altPort` marks
   what came through it, so replies, challenges and netchans leave by the same

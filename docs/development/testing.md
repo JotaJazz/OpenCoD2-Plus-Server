@@ -17,7 +17,7 @@ temporary `fs_homepath`.
 
 | Script | What it checks | Typical run |
 |---|---|---|
-| `scripts/smoke_test.py` | Map loads; `getinfo`, `getstatus`, rcon; minimal client connects, gets the gamestate, enters, sends fragmented messages, keeps its address from a guessed qport and after a port change, runs at most 64 commands per message; over-long query challenges and `../` map names refused; master heartbeats; SIGTERM shutdown; log handling | `python3 scripts/smoke_test.py <game>` and `--protocol 118 --binary <1.3 binary>` |
+| `scripts/smoke_test.py` | Map loads; `getinfo`, `getstatus`, rcon; minimal client connects, gets the gamestate, enters, sends fragmented messages, keeps its address from a guessed qport and after a port change, runs at most 64 commands per message; over-long query challenges and `../` map names refused; master heartbeats; SIGTERM shutdown; log handling | `python3 scripts/smoke_test.py <game>`, `--protocol 118 --binary <1.3 binary>` and `--plus --binary <1.3 Plus binary>` |
 | `scripts/bots_test.py` | Bots mod: graph built, saved and reloaded; paths, sights, grenades, knives; no script errors. `--gametype sd`: roles, active bomb sites, plants; `--gametype ctf`: roles, flag pickups (defuses and captures are only printed) | `python3 scripts/bots_test.py <game> --map mp_carentan` |
 | `scripts/http_test.py` | `httpFetch` and `webSocket*` against local HTTP, HTTPS, WS and WSS servers | `python3 scripts/http_test.py <game>` |
 | `scripts/check_docs.py` | Documentation links, paths, personal data, memory stages | `python3 scripts/check_docs.py` |

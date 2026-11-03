@@ -26,6 +26,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 |---|---|---|
 | `bin/cod2rev_lnxded` (64-bit) | `make` | protocols 115–119 (libcod) |
 | `bin/cod2rev_lnxded` (64-bit) | `make PROTOCOL=118` | protocol 118 |
+| `bin/cod2rev_lnxded` (64-bit, CoD2 1.3 Plus) | `make PLUS=1` | the Plus client (protocol 118 with `plus\\122`) |
 | `bin/cod2rev_lnxded` (32-bit) | `make ARCH=x86` (with or without `PROTOCOL=118`) | as the 64-bit build of the same version |
 | `bin/cod2rev_lnxded` (aarch64, experimental) | `make ARCH=arm64` on the ARM host | as the 64-bit build of the same version |
 | `bin/cod2rev_win32.exe` | `make windows` / `PROTOCOL=118` | as the Linux build of the same version |
@@ -53,8 +54,8 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 
 | Task | Command |
 |---|---|
-| Build 1.0 / 1.3 / Windows / 32-bit | `make`, `make PROTOCOL=118`, `make windows`, `make ARCH=x86` |
-| Smoke test | `python3 scripts/smoke_test.py <game>` (`--protocol 118 --binary <bin>`) |
+| Build 1.0 / 1.3 / 1.3 Plus / Windows / 32-bit | `make`, `make PROTOCOL=118`, `make PLUS=1`, `make windows`, `make ARCH=x86` |
+| Smoke test | `python3 scripts/smoke_test.py <game>` (`--protocol 118` or `--plus`, `--binary <bin>`) |
 | Bots test | `python3 scripts/bots_test.py <game> [--gametype sd\|ctf\|hq]` |
 | HTTP test | `python3 scripts/http_test.py <game>` |
 | Docs check | `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts -p 'test_*.py'` |

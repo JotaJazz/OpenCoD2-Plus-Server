@@ -9,6 +9,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 - **Game version selectable at build time:** the server can be built as 1.0 or as 1.3.
 - **Hardened builds:** the stack protector, `_FORTIFY_SOURCE` checks and, on Linux, read-only relocations are on, so many buffer overflows stop the server instead of being exploitable. `-fno-strict-aliasing` and `-fwrapv` keep the reversed code, which casts between types and relies on signed overflow wrapping, correct at higher optimization levels.
 - **Linux 64-bit by default:** `make` builds a 64-bit server that needs no 32-bit packages (`gcc-multilib`), and `make ARCH=x86` the 32-bit one; it works as the 32-bit one, which stays the default. GitHub Actions publishes both.
+- **CoD2 1.3 Plus as a build:** `make PLUS=1` builds the server for the CoD2 1.3 Plus client; every other build is unchanged and takes stock clients. GitHub Actions publishes it as `cod2rev_lnxded-1.3-plus`.
 - **Experimental arm64 build:** `make ARCH=arm64` on a 64-bit ARM host (a Raspberry Pi 3, 4 or 5 with a 64-bit system) builds a native server. Its math does not round as the original's x87 does, so it is not yet meant for competitive play.
 - **Simpler builds:** `make` builds the Linux binary directly, `make windows` cross-compiles for Windows, and GitHub Actions builds every variant on each push.
 - **Example `server.cfg`:** `scripts/server.cfg.example` lists every variable the server registers; `scripts/gen_server_cfg.py` regenerates it from the source.
@@ -56,8 +57,8 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 
 ## Compatibility and server behaviour
 
-- **CoD2 Plus handshake:** on the `plus` branch the 1.3 build only takes the CoD2 Plus client, and tells any other client to update to CoD2 1.3 Plus. The 1.0 build, bots and local clients are not affected.
-- **CoD2 Plus snapshots:** on the `plus` branch the 1.3 build sends the CoD2 Plus client entity times as a short offset, about 12% less traffic at 40 Hz. Plus version 122 needs the matching client.
+- **CoD2 Plus handshake:** the `make PLUS=1` build (CoD2 1.3 Plus) only takes the CoD2 Plus client, and tells any other client to update to CoD2 1.3 Plus. The 1.0 build, bots and local clients are not affected.
+- **CoD2 Plus snapshots:** the `make PLUS=1` build sends the CoD2 Plus client entity times as a short offset, about 12% less traffic at 40 Hz. Plus version 122 needs the matching client.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
 - **20% less traffic to clients:** the snapshot writer sent every field of a changed entity in full, even the ones that had not changed. It now marks them as unchanged, as the original does, with the same network format, so every client benefits.
 - **Master servers:**
@@ -135,7 +136,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `logTimestamps` | `0` | 0–1 | `1` starts each console log line with the date and time. |
 | `g_logRotateSize` | `0` | 0–2047 | Size in MB at which `g_log` (`games_mp.log`) is rotated when the next map starts. `0` never rotates it. |
 | `g_logRotate` | `1` | 1–1000 | Older game logs kept when `g_logRotateSize` rotates it, as `<name>.1` (newest) to `<name>.N`. |
-| `sv_plusNotice` | empty | text | 1.3 build of the `plus` branch: what a client without CoD2 Plus reads when refused. Empty uses the default, with the link to the client. |
+| `sv_plusNotice` | empty | text | `make PLUS=1` build only: what a client without CoD2 Plus reads when refused. Empty uses the default, with the link to the client. |
 | `net_altPort` | `0` | 0–65535 | Second UDP port of the 1.0 build, announced as protocol 118 and version 1.3. `0` keeps it closed. Only read at start, so set it on the command line. |
 | `net_strictPort` | `0` | 0–1 | `1` stops the server when `net_port` is busy instead of trying the next 9 ports. Only read at startup, so set it on the command line. |
 | `sv_logRcon` | `1` | 0–1 | `0` leaves accepted rcon commands out of the log. Wrong passwords are always logged. |

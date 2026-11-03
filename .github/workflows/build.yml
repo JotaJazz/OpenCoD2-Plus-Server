@@ -4,7 +4,7 @@ name: Build
 # documentation and script edits do not start a run.
 on:
   push:
-    branches: [master, plus]
+    branches: [master, dev]
     paths:
       - "src/**"
       - "Makefile"
@@ -44,6 +44,12 @@ jobs:
             arch: x86
             bits: 32
             artifact: cod2rev_lnxded-1.3-x86
+          - version: "1.3 Plus"
+            protocol: 118
+            arch: x64
+            bits: 64
+            plus: 1
+            artifact: cod2rev_lnxded-1.3-plus
     steps:
       - uses: actions/checkout@v7
       - name: Install 32-bit toolchain
@@ -53,7 +59,7 @@ jobs:
           sudo apt-get install -y gcc-multilib g++-multilib
       - name: Build
         run: |
-          make -j"$(nproc)" PROTOCOL=${{ matrix.protocol }} ARCH=${{ matrix.arch }}
+          make -j"$(nproc)" PROTOCOL=${{ matrix.protocol }} ARCH=${{ matrix.arch }} PLUS=${{ matrix.plus || 0 }}
       - name: Start the server without game files
         # Exit code 1 with the engine's own error message; a crash at startup
         # or a hang would end differently

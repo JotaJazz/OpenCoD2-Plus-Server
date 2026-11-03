@@ -18,9 +18,10 @@ folder existed, with the date the decision was made.
 | [0009](0009-linux-64-bit-build.md) | Linux 64-bit build next to the 32-bit one | Superseded by 0010 |
 | [0010](0010-64-bit-default-on-linux.md) | 64-bit is the default Linux build | Accepted |
 | [0011](0011-plus-protocol.md) | A negotiated Plus protocol on the plus branch | Superseded by 0012 |
-| [0012](0012-plus-leaves-1-3-out.md) | Plus leaves 1.3 clients out and raises the tick rate | Accepted |
+| [0012](0012-plus-leaves-1-3-out.md) | Plus leaves 1.3 clients out and raises the tick rate | Accepted; its branch superseded by 0015 |
 | [0013](0013-arm64-linux-build.md) | Experimental arm64 Linux build | Accepted |
 | [0014](0014-name-1-3-plus.md) | The player-facing name is "1.3 Plus" | Accepted |
+| [0015](0015-plus-as-a-build-variant.md) | CoD2 1.3 Plus is a build variant, not a branch | Accepted |
 
 ## Template
 
