@@ -1,5 +1,5 @@
 @echo off
-rem Starts the CoD2rev server using the game files in this folder.
+rem Starts the OpenCoD2-Plus Server using the game files in this folder.
 rem Usage: iniciar_cod2rev.bat [lan|internet]
 rem   lan       (default) LAN or direct IP only; accepts clients without a valid CD key
 rem   internet  also announces the server to the master servers

@@ -1,10 +1,10 @@
-# Changes in CoD2rev-Plus
+# Changes in OpenCoD2-Plus Server
 
 Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), in detail: the functions, variables and fixes behind each milestone that the [README](../README.md#what-it-does-today) summarizes. The script functions marked as coming from [zk_libcod](https://github.com/ibuddieat/zk_libcod) keep its names and arguments, so scripts written for it run here.
 
 ## Building and running
 
-- **Releases:** ready-to-run archives for Linux and Windows, from `v1.0.0-rc1`, on the [Releases](https://github.com/JotaJazz/CoD2rev-Plus/releases) page.
+- **Releases:** ready-to-run archives for Linux and Windows, from `v1.0.0-rc1`, on the [Releases](https://github.com/JotaJazz/OpenCoD2-Plus-Server/releases) page.
 - **Windows build with MinGW** (32-bit), including cross-compiling from Linux.
 - **Game version selectable at build time:** the server can be built as 1.0 or as 1.3.
 - **Hardened builds:** the stack protector, `_FORTIFY_SOURCE` checks and, on Linux, read-only relocations are on, so many buffer overflows stop the server instead of being exploitable. `-fno-strict-aliasing` and `-fwrapv` keep the reversed code, which casts between types and relies on signed overflow wrapping, correct at higher optimization levels.

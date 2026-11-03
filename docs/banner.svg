@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="280" viewBox="0 0 1200 280" role="img" aria-labelledby="title desc">
-  <title id="title">CoD2rev-Plus</title>
+  <title id="title">OpenCoD2-Plus Server</title>
   <desc id="desc">Call of Duty 2 dedicated server, versions 1.0, 1.3 and 1.3 Plus, for Linux, Windows and ARM</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
@@ -26,7 +26,7 @@
   <text x="140" y="226" text-anchor="middle" font-family="'Segoe UI', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif" font-size="60" font-weight="800" fill="#efe6cf">2</text>
   <path d="M180 182v28M166 196h28" stroke="#c9b37e" stroke-width="9" stroke-linecap="round"/>
 
-  <text x="300" y="136" font-family="'Segoe UI', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif" font-size="80" font-weight="800" fill="#efe6cf">CoD2rev<tspan fill="#c9b37e">-Plus</tspan></text>
-  <text x="304" y="182" font-family="'Segoe UI', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="600" fill="#d8ceb4">Call of Duty 2 dedicated server · 1.0 · 1.3 · 1.3 Plus</text>
+  <text x="300" y="136" font-family="'Segoe UI', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif" font-size="80" font-weight="800" fill="#efe6cf">OpenCoD2<tspan fill="#c9b37e">-Plus</tspan><tspan font-size="46" font-weight="600" fill="#d8ceb4" dx="14">Server</tspan></text>
+  <text x="304" y="182" font-family="'Segoe UI', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="600" fill="#d8ceb4">Dedicated server for Call of Duty 2 · 1.0 · 1.3 · 1.3 Plus</text>
   <text x="304" y="218" font-family="'Segoe UI', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif" font-size="20" fill="#9c9478">Linux · Windows · ARM — reverse-engineered, hardened, with bots and GSC extensions</text>
 </svg>

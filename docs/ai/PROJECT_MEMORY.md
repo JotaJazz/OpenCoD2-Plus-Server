@@ -6,6 +6,12 @@ rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
 
+
+## 2026-11-02 — renamed OpenCoD2-Plus Server
+
+- CoD2rev-Plus is now OpenCoD2-Plus Server, next to the OpenCoD2-Plus client, and the repository `JotaJazz/OpenCoD2-Plus-Server` (renamed with `gh`, GitHub redirects the old URLs) ([ADR 0016](../architecture/adr/0016-name-opencod2-plus-server.md)). The banner was redrawn: a faceted star over "2+" in a roundel, in a rounded sans.
+- Kept: binary, launcher and systemd names, and the old name in past stages and commits. Left open: the client repository's references, handled there.
+
 ## 2026-11-02 — README brought up to date
 
 - The six READMEs now describe one server for 1.0 and 1.3 (`net_altPort`), CoD2 1.3 Plus (`make PLUS=1`), the arm64 build and the `dev` branch, with a table of who can join each build; English first, the four other translations by subagents from the same diff, Spanish by hand. `SYSTEM_SUMMARY.md` dated 2026-11-02.

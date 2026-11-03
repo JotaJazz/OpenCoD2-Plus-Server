@@ -22,6 +22,7 @@ folder existed, with the date the decision was made.
 | [0013](0013-arm64-linux-build.md) | Experimental arm64 Linux build | Accepted |
 | [0014](0014-name-1-3-plus.md) | The player-facing name is "1.3 Plus" | Accepted |
 | [0015](0015-plus-as-a-build-variant.md) | CoD2 1.3 Plus is a build variant, not a branch | Accepted |
+| [0016](0016-name-opencod2-plus-server.md) | The project is named OpenCoD2-Plus Server | Accepted |
 
 ## Template
 

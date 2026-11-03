@@ -2,7 +2,7 @@
 
 ## Identity
 
-CoD2rev-Plus: a fork of
+OpenCoD2-Plus Server: a fork of
 [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), the
 reverse-engineered source of the Call of Duty 2 multiplayer dedicated server
 (1.0 and 1.3). Maintained by one person for running their own servers, with

@@ -1,19 +1,19 @@
-# CoD2rev-Plus
+# OpenCoD2-Plus Server
 
-<p align="center"><img src="docs/banner.svg" alt="CoD2rev-Plus" width="100%"></p>
+<p align="center"><img src="docs/banner.svg" alt="OpenCoD2-Plus Server" width="100%"></p>
 
-[![Build](https://github.com/JotaJazz/CoD2rev-Plus/actions/workflows/build.yml/badge.svg)](https://github.com/JotaJazz/CoD2rev-Plus/actions/workflows/build.yml)
+[![Build](https://github.com/JotaJazz/OpenCoD2-Plus-Server/actions/workflows/build.yml/badge.svg)](https://github.com/JotaJazz/OpenCoD2-Plus-Server/actions/workflows/build.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Platforms: Linux | Windows](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
 ![CoD2 1.0 | 1.3 | 1.3 Plus](https://img.shields.io/badge/CoD2-1.0%20%7C%201.3%20%7C%201.3%20Plus-c9b37e)
 [![Fork of voron00/CoD2rev_Server](https://img.shields.io/badge/fork%20of-voron00%2FCoD2rev__Server-555)](https://github.com/voron00/CoD2rev_Server)
-[![Last commit](https://img.shields.io/github/last-commit/JotaJazz/CoD2rev-Plus/dev)](https://github.com/JotaJazz/CoD2rev-Plus/commits/dev)
+[![Last commit](https://img.shields.io/github/last-commit/JotaJazz/OpenCoD2-Plus-Server/dev)](https://github.com/JotaJazz/OpenCoD2-Plus-Server/commits/dev)
 
 [Español](README.es.md) · [English](README.md) · [Português](README.pt.md) · [Français](README.fr.md) · **Deutsch** · [Русский](README.ru.md)
 
-**Dein eigener Call-of-Duty-2-Server, auch heute noch.** CoD2rev-Plus ist der dedizierte Mehrspielerserver von Call of Duty 2, aus seinem Quellcode neu aufgebaut, für die Versionen 1.0 und 1.3, unter Windows und Linux. Spieler verbinden sich mit dem Spiel, das sie bereits haben; er behebt viele Fehler des Originalservers und ergänzt, was Serveradministratoren und Moddern bisher gefehlt hat. Ein einziger Serverprozess kann Spieler von 1.0 und 1.3 im selben Match aufnehmen.
+**Dein eigener Call-of-Duty-2-Server, auch heute noch.** OpenCoD2-Plus Server ist der dedizierte Mehrspielerserver von Call of Duty 2, aus seinem Quellcode neu aufgebaut, für die Versionen 1.0 und 1.3, unter Windows und Linux. Spieler verbinden sich mit dem Spiel, das sie bereits haben; er behebt viele Fehler des Originalservers und ergänzt, was Serveradministratoren und Moddern bisher gefehlt hat. Ein einziger Serverprozess kann Spieler von 1.0 und 1.3 im selben Match aufnehmen.
 
-Er ist ein Fork von [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), wo das Reverse Engineering des Servers geleistet wurde. Er ist außerdem der Server von **CoD2 1.3 Plus**, einem neueren Protokoll für den Client [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), der sich noch in Entwicklung befindet.
+Er ist ein Fork von [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), wo das Reverse Engineering des Servers geleistet wurde. Bis November 2026 hieß er CoD2rev-Plus. Er ist außerdem der Server von **CoD2 1.3 Plus**, einem neueren Protokoll für den Client [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), der sich noch in Entwicklung befindet.
 
 ## Was es heute kann
 
@@ -30,14 +30,14 @@ Er ist ein Fork von [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_
 Er betreibt außerdem die lokalen Spiele von [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), einem neu aufgebauten CoD2-Client. Jede Änderung im Detail, mit ihren Funktionen, Variablen und Korrekturen, steht in [docs/CHANGES.md](docs/CHANGES.md) (auf Englisch).
 
 > [!NOTE]
-> **Wird noch verbessert.** Wenn etwas kaputtgeht oder sich anders verhält als beim Originalserver, melde es bitte in den [Issues](https://github.com/JotaJazz/CoD2rev-Plus/issues).
+> **Wird noch verbessert.** Wenn etwas kaputtgeht oder sich anders verhält als beim Originalserver, melde es bitte in den [Issues](https://github.com/JotaJazz/OpenCoD2-Plus-Server/issues).
 
 > [!IMPORTANT]
 > **Es sind keine Spieldateien enthalten.** Dieses Repository enthält nur Quellcode. Der Server braucht den Ordner `main` mit den `.iwd`-Dateien aus einer Kopie von Call of Duty 2, die **dir gehört**.
 
 ## Server starten
 
-Fertige Builds findest du auf der Seite [**Releases**](https://github.com/JotaJazz/CoD2rev-Plus/releases), beginnend mit dem Release Candidate `v1.0.0-rc1`; du kannst den Server auch selbst bauen (siehe [Kompilieren](#kompilieren)). Kopiere ihn in deinen Call-of-Duty-2-Ordner, neben `main`, mit einer `server.cfg` in `main` ([`scripts/server.cfg.example`](scripts/server.cfg.example) ist ein guter Ausgangspunkt).
+Fertige Builds findest du auf der Seite [**Releases**](https://github.com/JotaJazz/OpenCoD2-Plus-Server/releases), beginnend mit dem Release Candidate `v1.0.0-rc1`; du kannst den Server auch selbst bauen (siehe [Kompilieren](#kompilieren)). Kopiere ihn in deinen Call-of-Duty-2-Ordner, neben `main`, mit einer `server.cfg` in `main` ([`scripts/server.cfg.example`](scripts/server.cfg.example) ist ein guter Ausgangspunkt).
 
 **Windows:** `cod2rev_win32.exe` und [`scripts/windows/iniciar_cod2rev.bat`](scripts/windows/iniciar_cod2rev.bat) kopieren, dann ausführen:
 
@@ -103,7 +103,7 @@ make windows PROTOCOL=118    # 1.3, gleicher Name
 
 Ohne `PROTOCOL` oder mit `PROTOCOL=115` wird der Server als 1.0 gebaut. `PLUS=1` ist ein 1.3-Build und lässt sich mit `ARCH` und `windows` kombinieren. Jede Plattform und Version behält ihre eigenen Objekte unter `obj/`, du kannst also ohne `make clean` zwischen ihnen wechseln; alle Versionen schreiben denselben Dateinamen, und `BIN_DIR=<ordner>` baut in einen anderen Ordner, um mehrere zu behalten.
 
-Jeder Push auf `master` oder `dev`, der den Code ändert, baut 1.0 und 1.3 für Linux (32 und 64 Bit) und Windows sowie 1.3 Plus für 64-Bit-Linux in GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Die fertigen Binärdateien lassen sich als Artefakte im Tab [Actions](https://github.com/JotaJazz/CoD2rev-Plus/actions) des Repositorys herunterladen.
+Jeder Push auf `master` oder `dev`, der den Code ändert, baut 1.0 und 1.3 für Linux (32 und 64 Bit) und Windows sowie 1.3 Plus für 64-Bit-Linux in GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Die fertigen Binärdateien lassen sich als Artefakte im Tab [Actions](https://github.com/JotaJazz/OpenCoD2-Plus-Server/actions) des Repositorys herunterladen.
 
 | Option | Standard | Beschreibung |
 | --- | --- | --- |

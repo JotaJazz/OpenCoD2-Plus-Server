@@ -1,6 +1,6 @@
 # AGENTS.md
 
-CoD2rev-Plus: reverse-engineered Call of Duty 2 dedicated server (1.0 and
+OpenCoD2-Plus Server: reverse-engineered Call of Duty 2 dedicated server (1.0 and
 1.3), C++, 64-bit on Linux with a 32-bit build, 32-bit on Windows. A fork of
 voron00/CoD2rev_Server that adds hardening, admin features, libcod script
 functions and a bots mod.

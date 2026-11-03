@@ -1,19 +1,19 @@
-# CoD2rev-Plus
+# OpenCoD2-Plus Server
 
-<p align="center"><img src="docs/banner.svg" alt="CoD2rev-Plus" width="100%"></p>
+<p align="center"><img src="docs/banner.svg" alt="OpenCoD2-Plus Server" width="100%"></p>
 
-[![Build](https://github.com/JotaJazz/CoD2rev-Plus/actions/workflows/build.yml/badge.svg)](https://github.com/JotaJazz/CoD2rev-Plus/actions/workflows/build.yml)
+[![Build](https://github.com/JotaJazz/OpenCoD2-Plus-Server/actions/workflows/build.yml/badge.svg)](https://github.com/JotaJazz/OpenCoD2-Plus-Server/actions/workflows/build.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Platforms: Linux | Windows](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
 ![CoD2 1.0 | 1.3 | 1.3 Plus](https://img.shields.io/badge/CoD2-1.0%20%7C%201.3%20%7C%201.3%20Plus-c9b37e)
 [![Fork of voron00/CoD2rev_Server](https://img.shields.io/badge/fork%20of-voron00%2FCoD2rev__Server-555)](https://github.com/voron00/CoD2rev_Server)
-[![Last commit](https://img.shields.io/github/last-commit/JotaJazz/CoD2rev-Plus/dev)](https://github.com/JotaJazz/CoD2rev-Plus/commits/dev)
+[![Last commit](https://img.shields.io/github/last-commit/JotaJazz/OpenCoD2-Plus-Server/dev)](https://github.com/JotaJazz/OpenCoD2-Plus-Server/commits/dev)
 
 [Español](README.es.md) · [English](README.md) · **Português** · [Français](README.fr.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
-**O seu próprio servidor de Call of Duty 2, ainda hoje.** O CoD2rev-Plus é o servidor dedicado multijogador de Call of Duty 2 reconstruído a partir do seu código-fonte, para as versões 1.0 e 1.3, em Windows e Linux. Os jogadores entram com o jogo que já têm; o servidor corrige muitos erros do original e acrescenta o que faltava aos administradores de servidores e aos modders. Um só processo do servidor pode receber jogadores 1.0 e 1.3 na mesma partida.
+**O seu próprio servidor de Call of Duty 2, ainda hoje.** O OpenCoD2-Plus Server é o servidor dedicado multijogador de Call of Duty 2 reconstruído a partir do seu código-fonte, para as versões 1.0 e 1.3, em Windows e Linux. Os jogadores entram com o jogo que já têm; o servidor corrige muitos erros do original e acrescenta o que faltava aos administradores de servidores e aos modders. Um só processo do servidor pode receber jogadores 1.0 e 1.3 na mesma partida.
 
-É um fork de [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), onde foi feita a engenharia reversa do servidor. É também o servidor do **CoD2 1.3 Plus**, um protocolo mais recente para o cliente [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), que ainda está em desenvolvimento.
+É um fork de [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), onde foi feita a engenharia reversa do servidor. Até novembro de 2026 chamava-se CoD2rev-Plus. É também o servidor do **CoD2 1.3 Plus**, um protocolo mais recente para o cliente [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), que ainda está em desenvolvimento.
 
 ## O que faz hoje
 
@@ -30,14 +30,14 @@
 Também executa as partidas locais do [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), um cliente de CoD2 reconstruído. Cada alteração em detalhe, com as suas funções, variáveis e correções, está em [docs/CHANGES.md](docs/CHANGES.md) (em inglês).
 
 > [!NOTE]
-> **Ainda em melhoria.** Se algo falhar ou se comportar de forma diferente do servidor original, comunique-o nas [issues](https://github.com/JotaJazz/CoD2rev-Plus/issues).
+> **Ainda em melhoria.** Se algo falhar ou se comportar de forma diferente do servidor original, comunique-o nas [issues](https://github.com/JotaJazz/OpenCoD2-Plus-Server/issues).
 
 > [!IMPORTANT]
 > **Não inclui ficheiros do jogo.** Este repositório contém apenas código-fonte. O servidor precisa da pasta `main` com os ficheiros `.iwd` de uma cópia de Call of Duty 2 que **seja sua**.
 
 ## Como executar
 
-As compilações prontas a usar estão na página [**Releases**](https://github.com/JotaJazz/CoD2rev-Plus/releases), a partir da versão candidata `v1.0.0-rc1`; também pode compilar o servidor (ver [Compilar](#compilar)). Copie-o para a pasta do Call of Duty 2, junto a `main`, com um `server.cfg` em `main` ([`scripts/server.cfg.example`](scripts/server.cfg.example) é um bom ponto de partida).
+As compilações prontas a usar estão na página [**Releases**](https://github.com/JotaJazz/OpenCoD2-Plus-Server/releases), a partir da versão candidata `v1.0.0-rc1`; também pode compilar o servidor (ver [Compilar](#compilar)). Copie-o para a pasta do Call of Duty 2, junto a `main`, com um `server.cfg` em `main` ([`scripts/server.cfg.example`](scripts/server.cfg.example) é um bom ponto de partida).
 
 **Windows:** copie `cod2rev_win32.exe` e [`scripts/windows/iniciar_cod2rev.bat`](scripts/windows/iniciar_cod2rev.bat) e execute:
 
@@ -103,7 +103,7 @@ make windows PROTOCOL=118    # 1.3, mesmo nome
 
 Sem `PROTOCOL`, ou com `PROTOCOL=115`, o servidor é compilado como 1.0. `PLUS=1` é uma compilação 1.3 e pode combinar-se com `ARCH` e `windows`. Cada plataforma e versão guarda os seus próprios objetos em `obj/`, pelo que pode mudar de uma para a outra sem `make clean`; todas as versões escrevem o mesmo nome de ficheiro, e `BIN_DIR=<folder>` compila para outra pasta para manter várias.
 
-Cada push para `master` ou `dev` que altere o código compila 1.0 e 1.3 para Linux (32 e 64 bits) e Windows, e 1.3 Plus para Linux de 64 bits, no GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Os binários resultantes podem ser descarregados como artefactos no separador [Actions](https://github.com/JotaJazz/CoD2rev-Plus/actions) do repositório.
+Cada push para `master` ou `dev` que altere o código compila 1.0 e 1.3 para Linux (32 e 64 bits) e Windows, e 1.3 Plus para Linux de 64 bits, no GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). Os binários resultantes podem ser descarregados como artefactos no separador [Actions](https://github.com/JotaJazz/OpenCoD2-Plus-Server/actions) do repositório.
 
 | Opção | Predefinição | Descrição |
 | --- | --- | --- |

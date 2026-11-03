@@ -1,6 +1,6 @@
 # CoD2 Plus protocol
 
-The contract between CoD2rev-Plus's `make PLUS=1` build and OpenCoD2-Plus.
+The contract between OpenCoD2-Plus Server's `make PLUS=1` build and OpenCoD2-Plus.
 This file is the source of truth; OpenCoD2-Plus follows it. The decision is
 [ADR 0012](adr/0012-plus-leaves-1-3-out.md), which builds on
 [ADR 0011](adr/0011-plus-protocol.md); since
@@ -282,7 +282,7 @@ wire does not.
 
 | Step | Where |
 |---|---|
-| A fix or a protocol change starts on `dev`; a protocol change comes with this file and stays behind `COD2_PLUS` | CoD2rev-Plus |
+| A fix or a protocol change starts on `dev`; a protocol change comes with this file and stays behind `COD2_PLUS` | OpenCoD2-Plus Server |
 | It is vendored into OpenCoD2-Plus, and `test/vendored_files.txt` records the revision | OpenCoD2-Plus |
 | The client follows, and is tested against that server | OpenCoD2-Plus |
 | A release is the same tag in both, the server first | Both |

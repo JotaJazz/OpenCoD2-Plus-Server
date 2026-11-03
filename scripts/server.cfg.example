@@ -1,4 +1,4 @@
-// Example server configuration for CoD2rev-Plus.
+// Example server configuration for OpenCoD2-Plus Server.
 // Copy it to the "main" folder of the game as server.cfg and edit it.
 // Do not commit your real server.cfg: it holds passwords.
 //

@@ -1,4 +1,4 @@
-# systemd unit for CoD2rev servers, one per instance. The instance name is the
+# systemd unit for OpenCoD2-Plus Server, one server per instance. The instance name is the
 # config the server runs: "cod2rev@public" execs public.cfg, looked up in the
 # instance's home folder (/var/lib/cod2rev/public/main) and then in the game's
 # main folder.
@@ -13,7 +13,7 @@
 # which can also change DEDICATED (1 LAN, 2 internet) and MAP.
 
 [Unit]
-Description=CoD2rev server %i
+Description=OpenCoD2-Plus Server %i
 After=network-online.target
 Wants=network-online.target
 
