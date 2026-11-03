@@ -134,6 +134,7 @@ DESC = {
  'g_logPickup':'write weapon and item pickups to the game log',
  'sv_botKickMessages':'tell everyone when a bot is kicked',
  'sv_noAuthorize':'skip the CD key authorization server (players get GUID 0)',
+ 'sv_challengeStateless':'1 = getchallenge takes no slot and has no global limit, and the CD key is checked at connect: a flood cannot keep players out, but each join waits about 3 s more',
  'sv_authorizeTimeout':'milliseconds a connecting player waits for the authorization server',
  'sv_limitLocalRcon':'apply the rcon rate limit to LAN addresses too',
  'sv_isLookingAtOnDemand':'trace what players look at only for isLookingAt (no crosshair names or trigger_lookat)',

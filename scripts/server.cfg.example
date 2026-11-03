@@ -136,6 +136,7 @@ set sv_mapRotation "gametype tdm map mp_toujane gametype tdm map mp_carentan gam
 // set g_logPickup 1                           // bool: write weapon and item pickups to the game log
 // set sv_botKickMessages 1                    // bool: tell everyone when a bot is kicked
 // set sv_noAuthorize 0                        // bool: skip the CD key authorization server (players get GUID 0)
+// set sv_challengeStateless 0                 // bool: 1 = getchallenge takes no slot and has no global limit, and the CD key is checked at connect: a flood cannot keep players out, but each join waits about 3 s more
 // set sv_authorizeTimeout <set at startup>    // int, 0 to 1200000: milliseconds a connecting player waits for the authorization server
 // set sv_limitLocalRcon 0                     // bool: apply the rcon rate limit to LAN addresses too
 // set sv_isLookingAtOnDemand 0                // bool: trace what players look at only for isLookingAt (no crosshair names or trigger_lookat)

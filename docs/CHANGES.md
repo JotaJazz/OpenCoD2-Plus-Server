@@ -35,6 +35,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 - **`iplist.txt` behind a local proxy:** a proxied client is also checked by the real address the proxy reports, not only by the proxy's own.
 - **Joining during a `getchallenge` flood:** made-up addresses used up the global limit, and at 1000 requests a second a player needed 40 seconds to join, at 3000 they could not. A client that asks again now has a limit of its own and joins at its first retry, 3 seconds later.
 - **Bans checked on every connect:** `iplist.txt`, the GUID ban list and the temporary kick bans were only read when the authorize server answered, so `iplist.txt` did not apply with `sv_noAuthorize 1`, to LAN addresses or after an authorize timeout, and none of them to a client resending its old challenge after a kick. `connect` now checks them too; on those first three paths the GUID is unknown, so only `iplist.txt` can refuse.
+- **Signed challenges:** a challenge is now an HMAC of the player's address under a key drawn at startup, so a player whose challenge a flood of made-up addresses pushed out of the table still joins, a few seconds later. On LAN and with `sv_noAuthorize` `getchallenge` takes no slot and has no global limit. `sv_challengeStateless 1` does the same on the internet for a server under such a flood: the CD key is checked at `connect`, and each join waits about 3 seconds more.
 - **Menu commands limited:** `mr` (menu responses) skips flood protection so menus keep working, and each one runs the gametype's scripts, so a client could send hundreds a second. A client now gets a burst of 20, then 20 a second.
 - **Malformed packets logged at most 10 a second:** a bad command byte, a wrong user command count, a bad acknowledge, an invalid mute number or voice packet printed a line each, so one client could flood the console and the log.
 - **Chat cannot show the game's messages:** a chat line starting with byte 0x14 made the rest a localized string, so a player could show "Vote passed", a kick or any other game message after their name. Only 0x15, the mark the client itself puts at the start of chat, is kept.
@@ -165,6 +166,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `g_logPickup` | `1` | 0–1 | `0` leaves weapon and item pickups out of the game log. |
 | `sv_botKickMessages` | `1` | 0–1 | `0` hides the message for kicked bots. |
 | `sv_noAuthorize` | `0` | 0–1 | `1` skips the CD key authorization server; players get GUID 0. |
+| `sv_challengeStateless` | `0` | 0–1 | `1` answers `getchallenge` with the signed challenge alone, with no slot and no global limit, and checks the CD key at `connect`: a flood of made-up addresses cannot keep players out, but each join waits about 3 seconds more. |
 | `sv_authorizeTimeout` | `5000` | 0–1200000 | Milliseconds a connecting player waits for the authorization server. |
 | `sv_limitLocalRcon` | `0` | 0–1 | `1` applies the rcon rate limit to LAN addresses too. |
 | `sv_isLookingAtOnDemand` | `0` | 0–1 | `1` finds what a player looks at only when a script calls `isLookingAt` (no crosshair names or `trigger_lookat` then). |

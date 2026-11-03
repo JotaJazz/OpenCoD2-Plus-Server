@@ -14,6 +14,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — signed challenges and sv_challengeStateless
+
+- Challenges are an HMAC-SHA256 of address, port and a 30 s window, so a `connect` whose slot a flood took gets one again, waiting for the authorize reply as `getchallenge` would. That alone helped little: with the global limit the table takes about 10 s to turn over, and the real harm was the limit dropping real requests. `getchallenge` keeps state only for the authorize step, whose reply names the challenge and not the address, so `sv_challengeStateless 1` moves that step to the `connect` (the client resends it every 3 s) and answers `getchallenge` statelessly with no global limit; LAN and `sv_noAuthorize` always do ([ADR 0018](../architecture/adr/0018-signed-challenges.md)).
+- Smoke: a fake authorize server with `net_lanauthorize 1`; a challenge pushed out by 1100 other ports joins, and under a sustained 400 a second flood a stateless client gets its challenge and joins. All fail on the old code. Mbed TLS is now built with libcod whatever `WITH_HTTP`, which fixes `WITH_HTTP=false` builds (the limiter's seed already needed it).
+- Left open: the stateless mode costs each join about 3 s and has not met a real client or the real authorize server; slots made from a signature skip `sv_minPing`/`sv_maxPing`.
+
 ## 2026-11-03 — prone check checked against the 1.3 binary
 
 - The 1.3 Linux server (`cod2_lnxded` of CoD2x, stripped) was searched for the function that loads 22, 18, 2.5, 48, 0.7, 70 and -50 as floats: `BG_CheckProneValid` is at `0x80e01f4`. At `0x80e0823` it tests `bFirstTraceHit` and skips both the `-0.75` test and the feet trace when it is false, and the `-0.75` test jumps to `0x80e0e03`, which returns false on the ground and clears the pitches in the air: our `fail` label. Our function follows the binary; OpenCoD2-Plus's reconstruction, which runs the feet trace every time, does not.

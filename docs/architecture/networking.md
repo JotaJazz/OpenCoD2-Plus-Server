@@ -70,6 +70,12 @@ New code that reads from the network follows them:
   keeps the 1024-slot table from turning over faster than a join takes, so an
   address that asks again within 10 seconds gets 20 a second of its own:
   otherwise a flood of made-up addresses keeps every player out.
+- A challenge is signed for its address and port (`SV_ChallengeCookie`), so a
+  `connect` whose slot is gone still gets one. Where no authorize step applies,
+  or with `sv_challengeStateless 1`, `getchallenge` answers with the signature
+  alone, takes no slot and skips the global limit; the `connect` takes the slot
+  and asks the authorize server
+  ([ADR 0018](adr/0018-signed-challenges.md)).
   rcon also counts wrong passwords per address (`sv_rconMaxAttempts`,
   `sv_rconLockTime`), and its global limit runs before the password check;
   `sv_rconWhitelist` skips both limits. A new connectionless command that

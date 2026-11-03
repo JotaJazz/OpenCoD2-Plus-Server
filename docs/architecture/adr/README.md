@@ -24,6 +24,7 @@ folder existed, with the date the decision was made.
 | [0015](0015-plus-as-a-build-variant.md) | CoD2 1.3 Plus is a build variant, not a branch | Accepted |
 | [0016](0016-name-opencod2-plus-server.md) | The project is named OpenCoD2-Plus Server | Accepted |
 | [0017](0017-sse2-math.md) | Float math on SSE2, not x87 | Accepted |
+| [0018](0018-signed-challenges.md) | Signed challenges, and a stateless mode for floods | Accepted |
 
 ## Template
 

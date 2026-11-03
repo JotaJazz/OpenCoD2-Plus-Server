@@ -14,7 +14,7 @@ master servers; a second run in internet mode (dedicated 2) heartbeats to a fake
 master on 127.0.0.1 instead of the real ones. Exits with 0 when every check
 passes.
 """
-import argparse, os, random, re, secrets, signal, socket, string, subprocess, sys, tempfile, time, zipfile
+import argparse, os, random, re, secrets, signal, socket, string, subprocess, sys, tempfile, threading, time, zipfile
 
 import cod2client
 
@@ -493,6 +493,162 @@ def check_client_noise(port, protocol, password, console_log, check):
         rcon(port, password, 'developer 0')
 
 
+def check_signed_challenge(port, protocol, password, check):
+    """A challenge is signed for its address, so a client whose challenge a
+    flood of other addresses pushed out of the 1024-slot table still joins.
+    With net_lanauthorize 1 and a fake authorize server, that client also has
+    to wait for the authorize reply, which a connect asks for again."""
+    authorize = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    authorize.bind(('127.0.0.1', 0))
+    authorize.settimeout(0.2)
+    rcon(port, password, f'sv_authorizeServer 127.0.0.1')
+    rcon(port, password, f'sv_authorizePort {authorize.getsockname()[1]}')
+    rcon(port, password, 'net_lanauthorize 1')
+    asked = []
+
+    def answer_authorize(seconds):
+        """Accepts the requests for 127.0.0.1; the flood's are left unanswered."""
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            try:
+                data, addr = authorize.recvfrom(65535)
+            except OSError:
+                continue
+            parts = data[len(PREFIX):].decode('latin-1').split()
+            if parts[:1] == ['getIpAuthorize'] and parts[2] == '127.0.0.1':
+                asked.append(int(parts[1]))
+                authorize.sendto(PREFIX + f'ipAuthorize {parts[1]} accept KEY_IS_GOOD 4242'.encode(), addr)
+
+    client = cod2client.Client(port)
+    flood = []
+    try:
+        client.sock.sendto(PREFIX + b'getchallenge', client.addr)
+        answer_authorize(1.0)
+        line = client._oob('getchallenge', 'challengeResponse')
+        challenge = int(line.split()[1]) if line.startswith('challengeResponse') else None
+        check('an authorized client gets a challenge', challenge is not None and asked, line.strip())
+        if challenge is None:
+            return
+
+        # push it out of the table: 1100 other addresses, under the global
+        # limit of 100 a second
+        for n in range(1100):
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.bind(('127.0.0.3', 0))
+            s.sendto(PREFIX + b'getchallenge', ('127.0.0.1', port))
+            flood.append(s)
+            if n % 9 == 8:
+                time.sleep(0.1)
+        time.sleep(0.5)
+
+        userinfo = ('\\protocol\\%d\\challenge\\%d\\qport\\%d\\name\\smokesigned\\rate\\25000\\snaps\\20\\plus\\122'
+                    % (protocol, challenge, client.qport))
+        connect = PREFIX + f'connect "{userinfo}"'.encode('latin-1')
+        client.sock.sendto(connect, client.addr)
+        client.sock.settimeout(1.0)
+        try:
+            first = client.sock.recvfrom(65535)[0][len(PREFIX):].decode('latin-1')
+        except OSError:
+            first = None
+        asked_before = len(asked)
+        answer_authorize(1.0)
+        check('a signed challenge out of the table waits for authorize',
+              first is None and len(asked) > asked_before and asked[-1] == challenge, repr(first))
+        client.protocol = protocol
+        reply = client._oob(f'connect "{userinfo}"', 'connectResponse')
+        check('a signed challenge out of the table joins', reply.startswith('connectResponse'), reply.strip())
+    except OSError as e:
+        check('a signed challenge out of the table joins', False, str(e))
+    finally:
+        for s in flood:
+            s.close()
+        client.close()
+        authorize.close()
+        rcon(port, password, 'net_lanauthorize 0')
+
+
+def check_stateless_challenge(port, protocol, password, check):
+    """With sv_challengeStateless 1 getchallenge answers at once with the signed
+    challenge, takes no slot and has no global limit, so a burst from other
+    addresses doesn't keep a player out; the connect asks the authorize server."""
+    authorize = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    authorize.bind(('127.0.0.1', 0))
+    authorize.settimeout(0.2)
+    rcon(port, password, 'sv_authorizeServer 127.0.0.1')
+    rcon(port, password, f'sv_authorizePort {authorize.getsockname()[1]}')
+    rcon(port, password, 'net_lanauthorize 1')
+    rcon(port, password, 'sv_challengeStateless 1')
+    asked = []
+
+    def answer_authorize(seconds):
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            try:
+                data, addr = authorize.recvfrom(65535)
+            except OSError:
+                continue
+            parts = data[len(PREFIX):].decode('latin-1').split()
+            if parts[:1] == ['getIpAuthorize'] and parts[2] == '127.0.0.1':
+                asked.append(int(parts[1]))
+                authorize.sendto(PREFIX + f'ipAuthorize {parts[1]} accept KEY_IS_GOOD 4243'.encode(), addr)
+
+    client = cod2client.Client(port)
+    try:
+        # a flood of 400 a second, over what the stateful path lets through,
+        # while the client asks as a real one does, again until answered
+        stop = threading.Event()
+
+        def flood():
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.bind(('127.0.0.3', 0))
+                while not stop.is_set():
+                    for _ in range(20):
+                        s.sendto(PREFIX + b'getchallenge', ('127.0.0.1', port))
+                    time.sleep(0.05)
+
+        flooder = threading.Thread(target=flood)
+        flooder.start()
+        time.sleep(1.0)
+        client.sock.settimeout(1.0)
+        line = 'no reply'
+        try:
+            for _ in range(3):
+                try:
+                    line = client._oob('getchallenge', 'challengeResponse')
+                    break
+                except OSError:
+                    pass
+        finally:
+            stop.set()
+            flooder.join()
+        answer_authorize(0.3)
+        challenge = int(line.split()[1]) if line.startswith('challengeResponse') else None
+        check('a stateless challenge comes through a flood, before authorize',
+              challenge is not None and not asked, line.strip())
+        if challenge is None:
+            return
+
+        userinfo = ('\\protocol\\%d\\challenge\\%d\\qport\\%d\\name\\smokestateless\\rate\\25000\\snaps\\20\\plus\\122'
+                    % (protocol, challenge, client.qport))
+        client.sock.sendto(PREFIX + f'connect "{userinfo}"'.encode('latin-1'), client.addr)
+        try:
+            first = client.sock.recvfrom(65535)[0][len(PREFIX):].decode('latin-1')
+        except OSError:
+            first = None
+        answer_authorize(1.0)
+        check('a stateless connect waits for authorize', first is None and asked == [challenge], f'{first!r} {asked}')
+        client.protocol = protocol
+        reply = client._oob(f'connect "{userinfo}"', 'connectResponse')
+        check('a stateless connect joins after authorize', reply.startswith('connectResponse'), reply.strip())
+    except OSError as e:
+        check('a stateless connect joins after authorize', False, str(e))
+    finally:
+        client.close()
+        authorize.close()
+        rcon(port, password, 'sv_challengeStateless 0')
+        rcon(port, password, 'net_lanauthorize 0')
+
+
 def check_query_limits(port, check):
     """getinfo and getstatus have global limits of their own: a burst of
     getstatus must not silence getinfo, which browsers use, and getinfo has
@@ -742,6 +898,8 @@ def main():
                     check_client_noise(port, int(protocol), password, console_log, check)
                     check_connect_limit(port, int(protocol), args.plus, check)
                     check_query_limits(port, check)
+                    check_signed_challenge(port, int(protocol), password, check)
+                    check_stateless_challenge(port, int(protocol), password, check)
                     check_challenge_during_queries(port, check)
 
                 # manymaps must not take a map name that leaves its library

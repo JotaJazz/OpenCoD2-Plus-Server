@@ -177,7 +177,8 @@ SQLITE_DIR=$(SRC_DIR)/libcod/sqlite
 SQLITE_SOURCES=$(wildcard $(SQLITE_DIR)/*.c)
 SQLITE_OBJ=$(patsubst $(SQLITE_DIR)/%.c,$(OBJ_DIR)/%.o,$(SQLITE_SOURCES))
 endif
-ifeq ($(WITH_HTTP),true)
+# Mbed TLS is built with libcod even without WITH_HTTP: the rate limiter's
+# seed and the signed challenges use its entropy source and HMAC
 MBEDTLS_DIR=$(SRC_DIR)/libcod/mbedtls
 MBEDTLS_SOURCES=$(wildcard $(MBEDTLS_DIR)/library/*.c)
 # In their own folder: several names (cipher, platform, sha1...) are generic.
@@ -190,7 +191,6 @@ endif
 ifeq ($(OS),Windows_NT)
 # BCryptGenRandom for the entropy source, the system certificate store for the CA list
 LLIBS+=-lbcrypt -lcrypt32
-endif
 endif
 endif
 
