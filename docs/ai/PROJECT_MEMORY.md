@@ -13,6 +13,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — prone check checked against the 1.3 binary
+
+- The 1.3 Linux server (`cod2_lnxded` of CoD2x, stripped) was searched for the function that loads 22, 18, 2.5, 48, 0.7, 70 and -50 as floats: `BG_CheckProneValid` is at `0x80e01f4`. At `0x80e0823` it tests `bFirstTraceHit` and skips both the `-0.75` test and the feet trace when it is false, and the `-0.75` test jumps to `0x80e0e03`, which returns false on the ground and clears the pitches in the air: our `fail` label. Our function follows the binary; OpenCoD2-Plus's reconstruction, which runs the feet trace every time, does not.
+- The binary loads every constant of this function as a float (`flds`).
+- Left open: the client repository's prone check, handled there.
+
 ## 2026-11-03 — float math reviewed against 1.3
 
 - With SSE2, doubles in reversed code stay doubles while the 1.3 client rounds in float. A scan of `src/bgame` against OpenCoD2-Plus's reconstruction found two real cases: `BG_EvaluateTrajectory`/`Delta` (milliseconds to seconds, gravity, acceleration) and the vertical and horizontal bob factors, which the server uses for the eye position. Both now follow 1.3's float expressions and order. Single operations with exact constants (0.5, 0.25, 0.75) and comparisons with 0.1 give the same float either way and were left.
