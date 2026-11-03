@@ -12,7 +12,7 @@ scripts/                 launchers, systemd unit, cfg generator, bots installer,
   linux/                 iniciar_cod2rev.sh, cod2rev@.service
   windows/               iniciar_cod2rev.bat
 docs/                    this documentation, CHANGES.md
-.github/workflows/       build.yml (8 jobs: 5 Linux with 1.3 Plus, 1 MySQL, 2 Windows)
+.github/workflows/       build.yml (10 jobs: 5 Linux with 1.3 Plus, 1 MySQL, 2 Windows cross, 2 Windows native)
 Makefile                 all builds
 README*.md               user README in 6 languages
 AGENTS.md                agent entry point

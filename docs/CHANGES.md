@@ -5,7 +5,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 ## Building and running
 
 - **Releases:** ready-to-run archives for Linux and Windows, from `v1.0.0-rc1`, on the [Releases](https://github.com/JotaJazz/OpenCoD2-Plus-Server/releases) page.
-- **Windows build with MinGW** (32-bit), including cross-compiling from Linux.
+- **Windows build with MinGW** (32-bit), cross-compiled from Linux or built on Windows itself from `cmd` with MSYS2's MinGW-w64; GitHub Actions checks both.
 - **Game version selectable at build time:** the server can be built as 1.0 or as 1.3.
 - **Hardened builds:** the stack protector, `_FORTIFY_SOURCE` checks and, on Linux, read-only relocations are on, so many buffer overflows stop the server instead of being exploitable. `-fno-strict-aliasing` and `-fwrapv` keep the reversed code, which casts between types and relies on signed overflow wrapping, correct at higher optimization levels.
 - **Linux 64-bit by default:** `make` builds a 64-bit server that needs no 32-bit packages (`gcc-multilib`), and `make ARCH=x86` the 32-bit one; it works as the 32-bit one, which stays the default. GitHub Actions publishes both.

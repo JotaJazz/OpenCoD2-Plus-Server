@@ -13,6 +13,7 @@ This page covers what a contributor needs on top.
 | `make ARCH=arm64` | Linux aarch64, experimental ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)), built natively on the ARM host → same name in `bin/` |
 | `make PLUS=1` | CoD2 1.3 Plus: the 1.3 build with `COD2_PLUS`, only for the Plus client ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)); combines with `ARCH` and `windows` → same name in `bin/` |
 | `make windows` | MinGW cross-build → `bin/cod2rev_win32.exe` (`PROTOCOL=118` for 1.3) |
+| `mingw32-make` on Windows | Native build from `cmd` with the 32-bit MinGW-w64 of MSYS2 (`pacman -S mingw-w64-i686-gcc mingw-w64-i686-make`, its `mingw32\bin` first in `PATH`) → `bin\cod2rev_win32.exe`; `PROTOCOL=118` for 1.3 |
 | `make BIN_DIR=<folder>` | Same build into another folder, to keep 1.0 and 1.3 side by side |
 | `make clean` | Removes the binary and the objects |
 
@@ -48,7 +49,8 @@ This page covers what a contributor needs on top.
 4. For memory-sensitive changes, an ASan run with bots.
 
 CI (`.github/workflows/build.yml`) builds the seven variants (Linux 32 and
-64-bit, Windows, each for 1.0 and 1.3, and 1.3 Plus on Linux 64-bit) on pushes
+64-bit, Windows, each for 1.0 and 1.3, and 1.3 Plus on Linux 64-bit), and
+1.0 and 1.3 natively on Windows from `cmd` (not published), on pushes
 to `master` and `dev` and on pull requests that change `src/`, the `Makefile` or the
 workflow, and on a manual run (`workflow_dispatch`).
 
