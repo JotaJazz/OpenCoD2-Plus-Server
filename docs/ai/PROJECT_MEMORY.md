@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — arm64 on a Raspberry Pi 5
+
+- On a Pi 5 (Debian 12, gcc 12) the native build takes 1 min 50 s with `-j4`; smoke passes on 1.0 and 1.3 and bots pass. With 6 bots the server uses about 3% of a core and 116 MB.
+- The maintainer played a few minutes with a real client against bots on it: movement and hits felt as on x86, and both logs were clean (head, torso, hand and leg hits recorded).
+- Left open: a full match with several real players before it is called more than experimental ([../roadmap/debt.md](../roadmap/debt.md)).
+
 ## 2026-11-02 — experimental arm64 build
 
 - `make ARCH=arm64` builds natively on 64-bit ARM (a Raspberry Pi): no `-mfpmath=387`, plus `-fsigned-char` and `-ffp-contract=off` ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)). Under qemu in Docker it builds with the usual warnings and passes smoke and bots on 1.0; it found the dvar buffer bug below.
