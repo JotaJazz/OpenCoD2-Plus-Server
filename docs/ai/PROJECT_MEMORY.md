@@ -5,17 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-03 — dev tested before merge
 
-
-
-
-
-
-
-
-
-
-
+- The six commits from SSE2 to milliseconds in float build on all five targets; smoke passes on 1.0, 1.3, 1.3 Plus and 32-bit, and bots pass in tdm, sd and ctf on 64-bit and tdm and sd on 32-bit. A real 1.3 client played on the SSE2 1.3 build over LAN and movement felt as usual, which closes the real-player lead of the SSE2 stage.
+- The smoke test's `flatline heartbeat` checks failed once on 32-bit: a periodic `heartbeat COD-2` came before the flatline. Two reruns passed; the check takes the first heartbeat it gets, so it races the timer.
+- Still untested: the Windows `.exe` beyond building, and `sv_challengeStateless` against the real authorize server (a LAN address skips it).
 
 ## 2026-11-03 — milliseconds in float
 
