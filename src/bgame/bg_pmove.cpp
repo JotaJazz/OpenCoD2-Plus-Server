@@ -3897,7 +3897,7 @@ void PM_LadderMove( pmove_t *pm, pml_t *pml )
 
 	if ( pm->cmd.rightmove )
 	{
-		VectorMA(wishvel, scale * 0.2 * pm->cmd.rightmove, pml->right, wishvel);
+		VectorMA(wishvel, scale * 0.2f * pm->cmd.rightmove, pml->right, wishvel);
 	}
 
 	wishspeed = Vec3NormalizeTo(wishvel, wishdir);

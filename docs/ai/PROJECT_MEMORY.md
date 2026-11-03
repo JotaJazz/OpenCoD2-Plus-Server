@@ -15,6 +15,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — constants compared with the 1.3 binary
+
+- Every function of a 32-bit build was matched to the stripped 1.3 Linux server (`cod2_lnxded` of CoD2x) by the float constants it loads; most differences were noise (x87 negates with `fchs`, loads 1.0 with `fld1`; loops unrolled; inlining), and `BG_PlayerTouchesItem`, `PM_GetFlinchAnim` and `PM_AdjustAimSpreadScale`'s logic match. The 1.3 game code loads 880 constants as floats and 55 as doubles, all pi-related or a few exact values, so seven inexact double literals became floats: the 1.28 hip spread in the air, ladder side move, damage kick, radius damage box, missile landing angle test, weapon position speed cap and teammates' compass angle.
+- The Linux server divides `BG_RunLerpFrameRate`'s speed by 130 where the Windows client multiplies by 1/130 (commit `1094533`): two compilers. The Windows client predicts, so it stays the reference for the order of operations; the Linux binary still settles logic and float or double.
+- Left open: the remaining fingerprint differences (`PM_StepSlideMove`, `PM_WalkMove`, `PM_CheckDuck`, `BG_CalculateView_DamageKick` and others), most likely inlining, not read one by one.
+
 ## 2026-11-03 — signed challenges and sv_challengeStateless
 
 - Challenges are an HMAC-SHA256 of address, port and a 30 s window, so a `connect` whose slot a flood took gets one again, waiting for the authorize reply as `getchallenge` would. That alone helped little: with the global limit the table takes about 10 s to turn over, and the real harm was the limit dropping real requests. `getchallenge` keeps state only for the authorize step, whose reply names the challenge and not the address, so `sv_challengeStateless 1` moves that step to the `connect` (the client resends it every 3 s) and answers `getchallenge` statelessly with no global limit; LAN and `sv_noAuthorize` always do ([ADR 0018](../architecture/adr/0018-signed-challenges.md)).

@@ -1111,7 +1111,7 @@ void PM_AdjustAimSpreadScale( pmove_t *pm, pml_t *pml )
 			{
 				for ( i = 0; i < 2; i++ )
 				{
-					viewchange = viewchange + 1.28;
+					viewchange = viewchange + 1.28f;
 				}
 			}
 
@@ -2376,9 +2376,9 @@ void BG_CalculateWeaponPosition_BasePosition_angles( weaponState_t *ws, vec3_t a
 
 		if ( targetAngles[i] > ws->vLastMoveAng[i] )
 		{
-			if ( ws->frametime * 0.1 > speedFrac )
+			if ( ws->frametime * 0.1f > speedFrac )
 			{
-				speedFrac = ws->frametime * 0.1;
+				speedFrac = ws->frametime * 0.1f;
 			}
 
 			ws->vLastMoveAng[i] = ws->vLastMoveAng[i] + speedFrac;
@@ -2390,9 +2390,9 @@ void BG_CalculateWeaponPosition_BasePosition_angles( weaponState_t *ws, vec3_t a
 		}
 		else
 		{
-			if ( speedFrac > ws->frametime * -0.1 )
+			if ( speedFrac > ws->frametime * -0.1f )
 			{
-				speedFrac = ws->frametime * -0.1;
+				speedFrac = ws->frametime * -0.1f;
 			}
 
 			ws->vLastMoveAng[i] = ws->vLastMoveAng[i] + speedFrac;
