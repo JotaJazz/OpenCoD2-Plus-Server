@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — dvar values shared one buffer
+
+- An arm64 build (qemu) failed the smoke test: `sv_serverid` read back as 0, so the test client never entered the game. `Dvar_ValueToString` used one static buffer, and the dvar query formats the current and reset values in one `printf`; x86 evaluates the arguments right to left and hid it as a wrong default, ARM left to right and showed the default as the value. Two alternating buffers fix both.
+- Smoke passes on 1.0 and 1.3 x64; the four builds compile.
+
 ## 2026-11-02 — security audit of the network surface
 
 - A read-only audit of what a remote host reaches (connectionless packets, the handshake, client messages, game input, libcod) found no memory corruption or crash; it found logic and denial-of-service issues, nine fixed: a client's port taken only from its own sequence and never from voice, an ack of a message never sent dropped, a connected challenge's GUID kept from later authorize replies, 64 client commands per message, `cp` bounded by the server's iwds, download acks only for blocks read, a seeded rate limiter hash, 10 rate limit reports a second, query challenges up to 128 characters, manymaps names without separators; a warning about player text in unsafe builtins.
