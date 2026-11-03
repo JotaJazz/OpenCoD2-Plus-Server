@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-05 — VM_Execute optimized
+
+- `VM_Execute` lost `optimize("O0")`: upstream's `5942562` keeps the frame in a `function_stack_t` whose address escapes, and `gOpcode`, `gParamCount`, `objectId`, `fieldValueId`, `currentCaseValue` and `currentCodePos`, which cross a script error's `longjmp`, are `volatile`. `-Wclobbered` is clean on 64-bit, 32-bit, 1.3, Plus and MinGW.
+- A GSC loop of calls, arrays, strings and vectors, pinned to one core, took a median of 58 ms with `O0` and 51–52 ms now; without the `volatile`s it was 49–50 ms, but not safe.
+- Smoke on four builds, bots in tdm, sd, ctf and 32-bit tdm, and the local harness pass; `t_loose` and `t_ammo` failed now and then on both binaries.
+
 ## 2026-11-05 — upstream review to 5202c78
 
 - Of 18 voron00 commits, taken: the ADS check for linked players (the 1.3 binary's `PM_IsAdsAllowed` at `0x80ec9ea` agrees), the animscript define check, and `status` showing a proxied player's real address. Reading their Huffman import found that compression wrote past `svCompressBuf` on a message of rare bytes (11 bits each); it is now bounded, also on 1.0, where upstream's bound is eight times too big.

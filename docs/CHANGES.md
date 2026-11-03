@@ -66,6 +66,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 
 ## Compatibility and server behaviour
 
+- **Script VM optimized:** the interpreter loop was built without optimization because its state had to survive the jump out of a script error. That state now stays in memory, so the loop is optimized like the rest: a script-heavy loop runs about 11% faster.
 - **CoD2 Plus handshake:** the `make PLUS=1` build (CoD2 1.3 Plus) only takes the CoD2 Plus client, and tells any other client to update to CoD2 1.3 Plus. The 1.0 build, bots and local clients are not affected.
 - **CoD2 Plus snapshots:** the `make PLUS=1` build sends the CoD2 Plus client entity times as a short offset, about 12% less traffic at 40 Hz. Plus version 122 needs the matching client.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
