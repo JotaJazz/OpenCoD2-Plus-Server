@@ -980,7 +980,8 @@ void SV_PacketEvent( netadr_t from, msg_t *msg )
 
 			if ( cl->messageAcknowledge < 0 )
 			{
-				Com_Printf("Invalid reliableAcknowledge message from %s - reliableAcknowledge is %i\n", cl->name, cl->reliableAcknowledge);
+				if ( SV_ReportBadPacket() )
+					Com_Printf("Invalid reliableAcknowledge message from %s - reliableAcknowledge is %i\n", cl->name, cl->reliableAcknowledge);
 				return;
 			}
 
@@ -995,8 +996,9 @@ void SV_PacketEvent( netadr_t from, msg_t *msg )
 			// New: Fix for invalid reliableAcknowledge exploit, see https://github.com/callofduty4x/CoD4x_Server/pull/407
 			if ( ( cl->reliableSequence - cl->reliableAcknowledge ) > ( MAX_RELIABLE_COMMANDS - 1 ) || cl->reliableAcknowledge < 0 || ( cl->reliableSequence - cl->reliableAcknowledge ) < 0 )
 			{
-				Com_Printf("Out of range reliableAcknowledge message from %s - cl->reliableSequence is %i, reliableAcknowledge is %i\n",
-				           cl->name, cl->reliableSequence, cl->reliableAcknowledge);
+				if ( SV_ReportBadPacket() )
+					Com_Printf("Out of range reliableAcknowledge message from %s - cl->reliableSequence is %i, reliableAcknowledge is %i\n",
+					           cl->name, cl->reliableSequence, cl->reliableAcknowledge);
 				cl->reliableAcknowledge = cl->reliableSequence;
 				return;
 			}

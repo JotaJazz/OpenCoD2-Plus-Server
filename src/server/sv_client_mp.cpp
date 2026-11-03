@@ -732,7 +732,27 @@ static const char *SV_ConnectBanMessage( netadr_t adr, int guid )
 #if LIBCOD_COMPILE_RATELIMITER == 1
 static leakyBucket_t gamestateBuckets[MAX_CLIENTS];
 static bool gamestatePending[MAX_CLIENTS];
+static leakyBucket_t menuBuckets[MAX_CLIENTS];
 #endif
+
+/*
+==================
+SV_ReportBadPacket
+
+New: a client's malformed packets printed a line each, so one client could
+flood the console and the log. Past 10 a second they are dropped unreported
+==================
+*/
+bool SV_ReportBadPacket()
+{
+#if LIBCOD_COMPILE_RATELIMITER == 1
+	static leakyBucket_t bucket;
+
+	return !SVC_RateLimit( &bucket, 10, 100 );
+#else
+	return true;
+#endif
+}
 
 void SV_DirectConnect( netadr_t from )
 {
@@ -1018,6 +1038,7 @@ gotnewcl:
 #if LIBCOD_COMPILE_RATELIMITER == 1
 	memset( &gamestateBuckets[clientNum], 0, sizeof( gamestateBuckets[clientNum] ) );
 	gamestatePending[clientNum] = false;
+	memset( &menuBuckets[clientNum], 0, sizeof( menuBuckets[clientNum] ) );
 #endif
 
 	SV_UserinfoChanged( newcl );
@@ -1625,13 +1646,15 @@ void SV_UserMove( client_t *cl, msg_t *msg, qboolean delta )
 
 	if ( cmdCount < 1 )
 	{
-		Com_Printf( "cmdCount < 1\n" );
+		if ( SV_ReportBadPacket() )
+			Com_Printf( "cmdCount < 1\n" );
 		return;
 	}
 
 	if ( cmdCount > MAX_PACKET_USERCMDS )
 	{
-		Com_Printf( "cmdCount > MAX_PACKET_USERCMDS\n" );
+		if ( SV_ReportBadPacket() )
+			Com_Printf( "cmdCount > MAX_PACKET_USERCMDS\n" );
 		return;
 	}
 
@@ -2179,7 +2202,8 @@ static void SV_MutePlayer_f( client_t *cl )
 
 	if ( muteClient < 0 || muteClient >= MAX_CLIENTS )
 	{
-		Com_Printf("Invalid mute client %i\n", muteClient);
+		if ( SV_ReportBadPacket() )
+			Com_Printf("Invalid mute client %i\n", muteClient);
 		return;
 	}
 
@@ -2197,7 +2221,8 @@ static void SV_UnmutePlayer_f( client_t *cl )
 
 	if ( muteClient < 0 || muteClient >= MAX_CLIENTS )
 	{
-		Com_Printf("Invalid unmute client %i\n", muteClient);
+		if ( SV_ReportBadPacket() )
+			Com_Printf("Invalid unmute client %i\n", muteClient);
 		return;
 	}
 
@@ -2532,6 +2557,18 @@ static qboolean SV_ClientCommand( client_t *cl, msg_t *msg, int *executed )
 		floodprotect = qfalse;
 	}
 
+#if LIBCOD_COMPILE_RATELIMITER == 1
+	// New: mr and score skip flood protection, which would break menus, but
+	// each mr notifies menuresponse and runs the gametype's scripts: a burst
+	// of 20, then 20 a second, is far more than menus and the scoreboard send
+	if ( cl->state >= CS_ACTIVE && ( !Q_strncmp( "mr ", s, 3 ) || !Q_strncmp( "score ", s, 6 ) )
+	        && SVC_RateLimit( &menuBuckets[cl - svs.clients], 20, 50 ) )
+	{
+		clientOk = qfalse;
+		Com_DPrintf( "client menu command ignored for %s: %s\n", cl->name, s );
+	}
+#endif
+
 	// malicious users may try using too many string commands
 	// to lag other players.  If we decide that we want to stall
 	// the command, we will stop processing the rest of the packet,
@@ -2681,6 +2718,7 @@ void SV_ExecuteClientMessage( client_t *cl, msg_t *msg )
 	}
 	else if ( c != clc_EOF )
 	{
-		Com_Printf( "WARNING: bad command byte %i for client %i\n", c, cl - svs.clients );
+		if ( SV_ReportBadPacket() )
+			Com_Printf( "WARNING: bad command byte %i for client %i\n", c, cl - svs.clients );
 	}
 }

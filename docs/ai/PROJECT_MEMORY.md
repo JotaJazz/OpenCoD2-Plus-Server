@@ -10,6 +10,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — menu commands, bad packets, chat marker, getIP
+
+- `mr` skips flood protection (menus would break) and runs the gametype's scripts each time: a client gets 20, then 20 a second (`score` alone already goes through flood protection; only `score ` with arguments skipped it). Malformed packets print at most 10 lines a second in all. Only 0x15 is kept at the start of chat: OpenCoD2-Plus's `cl_keys_mp.c` shows the client sends `say "\x15text"`, and 0x14 let a player show any localized game message. `getIP()` returns `127.0.0.1` for a local client without a proxy.
+- Smoke checks the first three and each fails without the fix; `getIP()` has no test (it needs a script).
+- x87 to SSE2 is now an explicit lead in [../roadmap/debt.md](../roadmap/debt.md), with the arm64 evidence and the steps it needs.
+
 ## 2026-11-03 — query limits and the vote count
 
 - `getinfo` and `getstatus` shared ioq3's global 10 replies a second, so a few addresses hid the server from browsers and even stopped the status it pushes to the masters. `getinfo` has 100 a second of its own, `getstatus` keeps 10, and the resolved masters skip both global limits (their per-address limit stays).

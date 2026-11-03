@@ -443,6 +443,46 @@ def check_vote_limit(port, protocol, password, check):
             target.close()
 
 
+def check_client_noise(port, protocol, password, console_log, check):
+    """A client cannot flood the menu commands, which skip flood protection,
+    nor the log with malformed packets. developer 1 puts the debug prints of
+    the commands ignored in the console log."""
+    server_id = int(re.search(r'"sv_serverid" is: ?"(-?\d+)', rcon(port, password, 'sv_serverid')).group(1))
+    rcon(port, password, 'developer 1')
+    client = cod2client.Client(port)
+    try:
+        if client.connect(protocol, 'smokenoise') is not None or not client.request_gamestate(server_id):
+            check('menu commands are limited', False, 'client did not join')
+            return
+        client.enter_game(server_id, 1.0)
+        before = len([l for l in log_lines(console_log) if 'menu command ignored' in l])
+        for _ in range(3):
+            client.commands(server_id, [f'mr {server_id} 0 smokenoise'] * 30)
+        client.read_frames(1.0)
+        ignored = len([l for l in log_lines(console_log) if 'menu command ignored' in l]) - before
+        check('menu commands are limited', ignored >= 50, f'{ignored} of 90 ignored')
+
+        before = len([l for l in log_lines(console_log) if 'bad command byte' in l])
+        for _ in range(40):
+            payload = cod2client.MsgWriter()
+            payload.bits(5, 3)  # no such client message
+            client._send(server_id, payload)
+        client.read_frames(1.0)
+        printed = len([l for l in log_lines(console_log) if 'bad command byte' in l]) - before
+        check('bad packets are not printed each time', 1 <= printed <= 15, f'{printed} of 40 printed')
+
+        # the client starts its chat with 0x15; 0x14 there would make the
+        # text one of the game's localized messages
+        client.read_frames(1.0)  # flood protection: one command each 800 ms
+        client.command(server_id, 'say "\x14GAME_VOTEPASSED"')
+        chat = [c for f in client.read_frames(1.0) for c in f['commands'] if 'GAME_VOTEPASSED' in c]
+        check('chat cannot show the game\'s messages', chat and all(': ^7.GAME_VOTEPASSED' in c for c in chat),
+              repr(chat[:1]))
+    finally:
+        client.close()
+        rcon(port, password, 'developer 0')
+
+
 def check_query_limits(port, check):
     """getinfo and getstatus have global limits of their own: a burst of
     getstatus must not silence getinfo, which browsers use, and getinfo has
@@ -689,6 +729,7 @@ def main():
                 if protocol.isdigit():
                     check_client(port, int(protocol), args.plus, password, os.path.join(home, 'main', 'games_mp.log'), check)
                     check_vote_limit(port, int(protocol), password, check)
+                    check_client_noise(port, int(protocol), password, console_log, check)
                     check_connect_limit(port, int(protocol), args.plus, check)
                     check_query_limits(port, check)
                     check_challenge_during_queries(port, check)
