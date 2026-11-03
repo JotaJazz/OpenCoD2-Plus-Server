@@ -10,11 +10,12 @@ This page covers what a contributor needs on top.
 | `make` | Linux 64-bit, 1.0 (protocol 115) → `bin/cod2rev_lnxded` |
 | `make PROTOCOL=118` | Linux 64-bit, 1.3 → same name in `bin/` |
 | `make ARCH=x86` | Linux 32-bit ([ADR 0010](../architecture/adr/0010-64-bit-default-on-linux.md)); combines with `PROTOCOL=118` → same name in `bin/` |
+| `make ARCH=arm64` | Linux aarch64, experimental ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)), built natively on the ARM host → same name in `bin/` |
 | `make windows` | MinGW cross-build → `bin/cod2rev_win32.exe` (`PROTOCOL=118` for 1.3) |
 | `make BIN_DIR=<folder>` | Same build into another folder, to keep 1.0 and 1.3 side by side |
 | `make clean` | Removes the binary and the objects |
 
-- Objects go to `obj/<binary>_<protocol>` (`_x64` added for 64-bit), so
+- Objects go to `obj/<binary>_<protocol>` (`_x64` or `_arm64` added for 64-bit), so
   switching platform, version or architecture does not rebuild everything;
   the binary name in `bin/` is shared.
 - The 32-bit Linux build needs `gcc-multilib` and `g++-multilib`, the

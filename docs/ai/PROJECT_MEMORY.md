@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — experimental arm64 build
+
+- `make ARCH=arm64` builds natively on 64-bit ARM (a Raspberry Pi): no `-mfpmath=387`, plus `-fsigned-char` and `-ffp-contract=off` ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)). Under qemu in Docker it builds with the usual warnings and passes smoke and bots on 1.0; it found the dvar buffer bug below.
+- Rejected: armhf (32-bit ARM), and CI for it until it has run on real hardware.
+- Left open: a real Raspberry Pi with real clients, 1.3 on arm64, the rounding without x87 ([../roadmap/debt.md](../roadmap/debt.md)).
+
 ## 2026-11-02 — dvar values shared one buffer
 
 - An arm64 build (qemu) failed the smoke test: `sv_serverid` read back as 0, so the test client never entered the game. `Dvar_ValueToString` used one static buffer, and the dvar query formats the current and reset values in one `printf`; x86 evaluates the arguments right to left and hid it as a wrong default, ARM left to right and showed the default as the value. Two alternating buffers fix both.

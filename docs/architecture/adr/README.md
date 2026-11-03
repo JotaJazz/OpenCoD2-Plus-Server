@@ -17,6 +17,7 @@ folder existed, with the date the decision was made.
 | [0008](0008-unsafe-builtins-behind-a-dvar.md) | Unsafe libcod builtins behind a startup dvar | Accepted |
 | [0009](0009-linux-64-bit-build.md) | Linux 64-bit build next to the 32-bit one | Superseded by 0010 |
 | [0010](0010-64-bit-default-on-linux.md) | 64-bit is the default Linux build | Accepted |
+| [0013](0013-arm64-linux-build.md) | Experimental arm64 Linux build | Accepted |
 
 ## Template
 
