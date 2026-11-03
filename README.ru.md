@@ -99,6 +99,16 @@ make windows                 # 1.0 -> bin/cod2rev_win32.exe
 make windows PROTOCOL=118    # 1.3, то же имя
 ```
 
+### Windows (прямо в Windows, с MSYS2)
+
+Установите [MSYS2](https://www.msys2.org/), а в его консоли — 32-битный компилятор MinGW-w64: `pacman -S mingw-w64-i686-gcc mingw-w64-i686-make`. Затем собирайте из `cmd`, а не из консоли MSYS2, оставив в `PATH` только этот компилятор и Windows:
+
+```bat
+set PATH=%SystemDrive%\msys64\mingw32\bin;%SystemRoot%\system32;%SystemRoot%
+mingw32-make                 :: 1.0 -> bin\cod2rev_win32.exe
+mingw32-make PROTOCOL=118    :: 1.3, то же имя
+```
+
 <details>
 <summary><b>Версия игры, автоматические сборки и параметры Makefile</b></summary>
 

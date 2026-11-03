@@ -99,6 +99,16 @@ make windows                 # 1.0 -> bin/cod2rev_win32.exe
 make windows PROTOCOL=118    # 1.3, same name
 ```
 
+### Windows (on Windows itself, with MSYS2)
+
+Install [MSYS2](https://www.msys2.org/) and, from its shell, its 32-bit MinGW-w64 compiler: `pacman -S mingw-w64-i686-gcc mingw-w64-i686-make`. Then build from `cmd`, not from the MSYS2 shell, with only that compiler and Windows in `PATH`:
+
+```bat
+set PATH=%SystemDrive%\msys64\mingw32\bin;%SystemRoot%\system32;%SystemRoot%
+mingw32-make                 :: 1.0 -> bin\cod2rev_win32.exe
+mingw32-make PROTOCOL=118    :: 1.3, same name
+```
+
 <details>
 <summary><b>Game version, automated builds and Makefile options</b></summary>
 
