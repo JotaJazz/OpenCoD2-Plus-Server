@@ -7,6 +7,12 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — v1.0.0-rc2
+
+- Second release candidate, the first as OpenCoD2-Plus Server: the six stock archives packed by hand from the `master` CI run at `bd9552b` (same source as the tag, `58f1392`), named `opencod2-plus-server-v1.0.0-rc2-*`; checksums verified after download, and the packed x64 binaries passed smoke on 1.0 and 1.3. glibc 2.38 as in rc1.
+- Left out: the 1.3 Plus build (its client cannot be distributed) and arm64 (not built by CI). Packing is still by hand.
+
 ## 2026-11-02 — renamed OpenCoD2-Plus Server
 
 - CoD2rev-Plus is now OpenCoD2-Plus Server, next to the OpenCoD2-Plus client, and the repository `JotaJazz/OpenCoD2-Plus-Server` (renamed with `gh`, GitHub redirects the old URLs) ([ADR 0016](../architecture/adr/0016-name-opencod2-plus-server.md)). The banner was redrawn: a faceted star over "2+" in a roundel, in a rounded sans.

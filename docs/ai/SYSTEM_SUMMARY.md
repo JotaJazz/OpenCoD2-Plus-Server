@@ -1,7 +1,7 @@
 # System summary
 
 Live snapshot. Last updated: 2026-11-02 (`master` and `dev` at the CoD2 1.3
-Plus build variant; the latest release is `v1.0.0-rc1`).
+Plus build variant; the latest release is `v1.0.0-rc2`).
 
 ## Tree
 
@@ -49,7 +49,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | Listen server | `LISTEN_SERVER` builds the server into a client, for the maintainer's client project; off in this repo's builds |
 | Windows build | MinGW, static, threads through a stdcall wrapper |
 | Deployment | Launchers (LAN/internet mode, port 28960), `scripts/linux/cod2rev@.service` |
-| Branches and releases | Work goes on `dev`, which reaches `master` for a release; `v1.0.0-rc1` (pre-release) has the six stock CI binaries with `LICENSE` and the example cfg |
+| Branches and releases | Work goes on `dev`, which reaches `master` for a release; `v1.0.0-rc2` (pre-release, 2026-11-03, first as OpenCoD2-Plus Server) has the six stock CI binaries with `LICENSE`, the example cfg and the launcher (and the systemd unit on Linux); 1.3 Plus and arm64 are build-from-source |
 | Docs | This layer plus `scripts/check_docs.py` (2026-10-22) |
 
 ## Commands
