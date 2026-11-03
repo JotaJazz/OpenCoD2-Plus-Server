@@ -773,7 +773,8 @@ float BG_GetHorizontalBobFactor( const playerState_t *ps, float cycle, float spe
 		amplitude = maxAmp;
 	}
 
-	return sin(cycle) * amplitude;
+	// in float, as 1.3
+	return amplitude * sinf(cycle);
 }
 
 /*
@@ -804,7 +805,11 @@ float BG_GetVerticalBobFactor( const playerState_t *ps, float cycle, float speed
 		amplitude = maxAmp;
 	}
 
-	return (0.75 * (sin(cycle * 4.0 + asin(1)) * 0.2 + sin(cycle + cycle))) * amplitude;
+	// New: in float and in this order, as 1.3; the double expression
+	// rounded once at the end
+	float bob = sinf(cycle + cycle);
+	bob += (float)sin((double)(cycle * 4.0f) + M_PI / 2) * 0.2f;
+	return amplitude * (bob * 0.75f);
 }
 
 /*

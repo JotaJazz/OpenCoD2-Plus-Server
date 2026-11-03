@@ -12,6 +12,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — float math reviewed against 1.3
+
+- With SSE2, doubles in reversed code stay doubles while the 1.3 client rounds in float. A scan of `src/bgame` against OpenCoD2-Plus's reconstruction found two real cases: `BG_EvaluateTrajectory`/`Delta` (milliseconds to seconds, gravity, acceleration) and the vertical and horizontal bob factors, which the server uses for the eye position. Both now follow 1.3's float expressions and order. Single operations with exact constants (0.5, 0.25, 0.75) and comparisons with 0.1 give the same float either way and were left.
+- Found on the way: `BG_CheckProneValid` differs from the reconstruction in structure, not only in rounding; left in [../roadmap/debt.md](../roadmap/debt.md). The ladder move's `0.2` has no independent reference (the client reuses this code).
+- The vote check now waits for each vote to pass: it failed once when the next call came too early.
+
 ## 2026-11-03 — float math on SSE2
 
 - The x87 flag assumed the original ran x87 at its default precision, but OpenCoD2-Plus's reconstruction shows the 1.3 client sets it to 24 bits (`_controlfp(_PC_24)` in `Sys_CreateConsole`), and the client predicts movement. Every x86 build now uses `-msse2 -mfpmath=sse`, which rounds float operations as that client does and no longer depends on register spills ([ADR 0017](../architecture/adr/0017-sse2-math.md)); `USE_SSE2` and upstream's approximations stay out. Only `Q_vsnprintf`'s `long double` keeps x87 instructions.

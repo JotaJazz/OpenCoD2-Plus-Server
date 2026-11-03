@@ -432,11 +432,21 @@ def check_vote_limit(port, protocol, password, check):
         replies = []
         for num in nums:
             voter.command(server_id, f'callvote clientkick {num}')
-            frames = voter.read_frames(1.0)
-            replies.append(next((c for f in frames for c in f['commands'] if 'GAME_CALLEDAVOTE' in c or 'GAME_MAXVOTES' in c), ''))
+            # wait for the answer and, for a vote called, for it to pass, so
+            # the next one does not find it in progress
+            reply, deadline = '', time.time() + 4.0
+            while time.time() < deadline:
+                seen = [c for f in voter.read_frames(0.3) for c in f['commands'] if 'GAME_' in c]
+                reply = reply or next((c for c in seen if 'GAME_CALLEDAVOTE' in c or 'GAME_MAXVOTES' in c
+                                       or 'GAME_VOTEALREADY' in c or 'GAME_NOSPECTATOR' in c), '')
+                if 'GAME_CALLEDAVOTE' not in reply and reply or any('GAME_VOTEPASSED' in c for c in seen):
+                    break
+            replies.append(reply)
+            time.sleep(0.9)  # flood protection: one command each 800 ms
         called = sum('GAME_CALLEDAVOTE' in r for r in replies)
         check('a player calls at most three votes', len(nums) == 4 and called == 3 and 'GAME_MAXVOTESCALLED' in replies[3],
-              f'{called} called, then {replies[3][:30] if len(replies) == 4 else replies}')
+              f'{called} called, then {replies[3][:30] if len(replies) == 4 else replies}' if called == 3
+              else f'{len(nums)} targets, replies {[r[:30] for r in replies]}')
     finally:
         voter.close()
         for target in targets:
