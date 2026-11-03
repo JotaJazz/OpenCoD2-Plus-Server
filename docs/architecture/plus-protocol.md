@@ -112,8 +112,9 @@ own field code, `MSG_WriteDeltaField` here and `MSG_ReadDeltaField` there.
   lost, and a demo can start at any moment.
 - A demo recorded on a Plus server plays on the Plus client; whether stock
   clients can play it is left for milestone 3.
-- Only the Plus format exists on a Plus server, so the 1.3 path can go when
-  it gets in the way, as long as merges from `master` stay workable.
+- Only the Plus format exists on a Plus server, but the stock path stays for
+  every other build: Plus code goes behind `#ifdef COD2_PLUS` and leaves the
+  stock code as it is.
 
 ## Milestones
 

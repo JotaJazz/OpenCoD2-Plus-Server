@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+
+## 2026-11-02 — README brought up to date
+
+- The six READMEs now describe one server for 1.0 and 1.3 (`net_altPort`), CoD2 1.3 Plus (`make PLUS=1`), the arm64 build and the `dev` branch, with a table of who can join each build; English first, the four other translations by subagents from the same diff, Spanish by hand. `SYSTEM_SUMMARY.md` dated 2026-11-02.
+- Left out: binaries for arm64 and 1.3 Plus on the Releases page; the README tells ARM users to build on the machine.
+
 ## 2026-11-02 — CoD2 1.3 Plus as a build variant
 
 - The maintainer wanted one line of development. Plus moved from the `plus` branch behind `#ifdef COD2_PLUS`, built by `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)); script time, `trDuration` and the `g_forceRate`/`g_forceSnaps` caps went behind it too, as they were not before. Without it the 1.0 and 1.3 x64 objects equal `master`'s byte for byte, apart from the build time in `unix_main.o`.

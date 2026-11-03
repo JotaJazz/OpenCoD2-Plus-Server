@@ -5,25 +5,27 @@
 [![Build](https://github.com/JotaJazz/CoD2rev-Plus/actions/workflows/build.yml/badge.svg)](https://github.com/JotaJazz/CoD2rev-Plus/actions/workflows/build.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 ![Platforms: Linux | Windows](https://img.shields.io/badge/platform-Linux%20%7C%20Windows-lightgrey)
-![CoD2 1.0 | 1.3](https://img.shields.io/badge/CoD2-1.0%20%7C%201.3-c9b37e)
+![CoD2 1.0 | 1.3 | 1.3 Plus](https://img.shields.io/badge/CoD2-1.0%20%7C%201.3%20%7C%201.3%20Plus-c9b37e)
 [![Fork of voron00/CoD2rev_Server](https://img.shields.io/badge/fork%20of-voron00%2FCoD2rev__Server-555)](https://github.com/voron00/CoD2rev_Server)
-[![Last commit](https://img.shields.io/github/last-commit/JotaJazz/CoD2rev-Plus)](https://github.com/JotaJazz/CoD2rev-Plus/commits/master)
+[![Last commit](https://img.shields.io/github/last-commit/JotaJazz/CoD2rev-Plus/dev)](https://github.com/JotaJazz/CoD2rev-Plus/commits/dev)
 
 [Español](README.es.md) · **English** · [Português](README.pt.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Русский](README.ru.md)
 
-**Your own Call of Duty 2 server, still.** CoD2rev-Plus is the Call of Duty 2 multiplayer dedicated server rebuilt from its source, for versions 1.0 and 1.3, on Windows and Linux. Players join it with the game they already have, and it fixes many bugs of the original server and adds what server admins and modders have been missing.
+**Your own Call of Duty 2 server, still.** CoD2rev-Plus is the Call of Duty 2 multiplayer dedicated server rebuilt from its source, for versions 1.0 and 1.3, on Windows and Linux. Players join it with the game they already have; it fixes many bugs of the original server and adds what server admins and modders have been missing. One server process can host 1.0 and 1.3 players in the same match.
 
-It is a fork of [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), where the reverse-engineering of the server was done.
+It is a fork of [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Server), where the reverse-engineering of the server was done. It is also the server of **CoD2 1.3 Plus**, a newer protocol for the [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus) client, which is still in development.
 
 ## What it does today
 
-- **Builds for Windows and Linux:** a MinGW build for Windows, `make` for 64-bit Linux, the game version (1.0 or 1.3) chosen at build time, automated builds on every push, launchers and an example `server.cfg`.
-- **Security and stability:** network input that crashed the server or overwrote its memory is now bounds-checked; rcon locks out IPs after wrong passwords; downloads can't fetch the stock game files; IP bans are enforced; and a crash leaves a report in `crash.log`.
-- **Compatibility:** large messages from 1.3 clients, Game Pass clients, master servers given as `host:port`, `dedicated 1`, game files on Windows drives under WSL, a steady game clock, and bots that come back after a map change.
-- **Administration:** passwords kept out of the log, log naming, rotation and timestamps, a forced rate and snapshot rate, a configurable CD key authorization server, optional kick and timeout messages, a clean shutdown on SIGTERM and a systemd unit.
-- **Scripting (libcod):** most of [zk_libcod](https://github.com/ibuddieat/zk_libcod)'s script functions and callbacks, with the same names: script errors with file and line, button presses, rcon commands, player and weapon control, admin tools, waypoint graphs with A\*, what each player sees, hears and collides with, physics, JSON, HTTP and WebSocket clients, sounds through voice chat and more, fixing several of its bugs on the way.
+- **Builds for Windows and Linux:** a MinGW build for Windows, `make` for 64-bit Linux, a 32-bit Linux build, an experimental build for 64-bit ARM such as a Raspberry Pi, the game version (1.0, 1.3 or 1.3 Plus) chosen at build time, automated builds on every push, launchers, a systemd unit and an example `server.cfg`.
+- **One server for 1.0 and 1.3:** the 1.0 build plays with 1.0, 1.3, Game Pass and CoD2x clients, and `net_altPort` lists the same match in the server browsers of both versions.
+- **Security and stability:** network input that crashed the server or overwrote its memory is now bounds-checked; floods of queries, connects and client commands are rate-limited; rcon locks out IPs after wrong passwords; downloads can't fetch the stock game files; bans are checked on every connect; and a crash leaves a report in `crash.log`.
+- **Compatibility:** about 20% less traffic to clients, large messages from 1.3 clients, master servers given as `host:port`, `dedicated 1`, game files on Windows drives under WSL, a steady game clock over long uptimes, and bots that come back after a map change.
+- **Administration:** passwords kept out of the log, log naming, rotation and timestamps, a forced rate and snapshot rate, a configurable CD key authorization server, optional kick and timeout messages, map ambience switches and a clean shutdown on SIGTERM.
+- **Scripting (libcod):** most of [zk_libcod](https://github.com/ibuddieat/zk_libcod)'s script functions and callbacks, with the same names: script errors with file and line, button presses, rcon commands, player and weapon control, admin tools, waypoint graphs with A\*, what each player sees, hears and collides with, physics, JSON, SQLite, HTTP and WebSocket clients, sounds through voice chat and more, fixing several of its bugs on the way.
 - **Bots mod:** `mods/bots`, bots that find their way over waypoint graphs, use sights, grenades and knives, and play the SD, CTF and HQ objectives.
-- **Tests:** a smoke test with a minimal client that reads the server's snapshots, and a bots test that play real maps.
+- **CoD2 1.3 Plus (in development):** `make PLUS=1` builds a server only for the Plus client, with a handshake that tells other clients to update and smaller snapshots, on the way to 40–60 Hz. Every other build keeps the original network format.
+- **Tests:** a smoke test with a minimal client that reads the server's snapshots, a bots test that plays real maps, and an HTTP and WebSocket test.
 
 It also runs the local games of [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), a rebuilt CoD2 client. Every change in detail, with its functions, variables and fixes, is in [docs/CHANGES.md](docs/CHANGES.md).
 
@@ -51,17 +53,23 @@ iniciar_cod2rev.bat internet   :: also on the public server list
 ./iniciar_cod2rev.sh internet   # also on the public server list
 ```
 
-Both start on port `28960` with the map `mp_toujane`. If the game also runs on the same PC, start the server first: the game uses `28960` too. More options, CD key checks and systemd are in [Running](#running).
+Both start on port `28960` with the map `mp_toujane`. If the game also runs on the same PC, start the server first: the game uses `28960` too. More options, CD key checks and systemd are in [Running](#running). On a Raspberry Pi 3, 4 or 5 with a 64-bit system, build it there with `make ARCH=arm64`.
 
 ## Game versions
 
-- **The version is chosen when building.** By default the server is built as 1.0 (protocol 115); with `PROTOCOL=118` it is built as 1.3. The server announces that version to the master servers, so it shows up in the server list of clients of that same version.
-- **The 1.0 build also accepts other versions by direct IP.** With libcod, which is enabled by default, it accepts connections using protocols 115 to 119, which includes 1.3 (protocol 118) and the Game Pass version (protocol 119). Direct IP connections to this build have been tested, including with a CoD2x 1.4.x client.
-- **The 1.3 build only accepts protocol 118 clients.** It has been started on Linux and Windows, where it loads a map and answers as 1.3, and the Linux build has been played on with a CoD2x 1.4 client. [CoD2x](https://github.com/callofduty2x/CoD2x) 1.4 clients also connect with protocol 118, and their server browser only lists servers that report protocol 118 or 120, so this is the build they can see.
+| Build | Who can join | Server browser |
+| --- | --- | --- |
+| `make` (1.0, the default) | 1.0, 1.3, Game Pass and CoD2x clients (protocols 115 to 119) | 1.0; with `net_altPort` also 1.3 and CoD2x |
+| `make PROTOCOL=118` (1.3) | 1.3 and CoD2x clients (protocol 118) | 1.3 and CoD2x |
+| `make PLUS=1` (1.3 Plus) | Only the OpenCoD2-Plus client; any other client is told to update | 1.3, so stock players see the notice instead of nothing |
+
+- **One match for 1.0 and 1.3:** start the 1.0 build with `+set net_altPort 28961` and it answers on a second port as 1.3, with its own heartbeats, so the same match is listed for both versions. Real 1.0 and 1.3 clients have played one match together this way. Run it on the 1.0 game files, without `iw_15.iwd`, whose scripts and menus 1.0 clients lack.
+- **CoD2x:** [CoD2x](https://github.com/callofduty2x/CoD2x) 1.4 clients connect with protocol 118, and their browser only lists servers that report protocol 118 or 120, so they see the 1.3 build and the `net_altPort` of the 1.0 build. A CoD2x client has played on both.
+- **CoD2 1.3 Plus** is for a client that cannot be distributed yet, so a public Plus server has to wait for it. Its protocol is in [docs/architecture/plus-protocol.md](docs/architecture/plus-protocol.md).
 
 ## For contributors
 
-Every kind of help counts: running a server and reporting what goes wrong, testing on other systems, mods that use the new script functions, or code. The technical documentation, in English, starts at [docs/README.md](docs/README.md); [AGENTS.md](AGENTS.md) is the entry point for AI coding agents.
+Every kind of help counts: running a server and reporting what goes wrong, testing on other systems, mods that use the new script functions, or code. Work happens on the `dev` branch, which reaches `master` with each release. The technical documentation, in English, starts at [docs/README.md](docs/README.md); [AGENTS.md](AGENTS.md) is the entry point for AI coding agents.
 
 ## Building
 
@@ -69,12 +77,17 @@ The output goes to `bin/` and intermediate objects to `obj/`.
 
 ### Linux
 
-The server is a 64-bit binary by default and needs only `gcc` and `g++`. `make ARCH=x86` builds a 32-bit one, which on a 64-bit system needs GCC's 32-bit support (on Debian and Ubuntu, the `gcc-multilib` and `g++-multilib` packages):
+The server is a 64-bit binary by default and needs only `gcc` and `g++`:
 
 ```bash
 make                 # 1.0 -> bin/cod2rev_lnxded
 make PROTOCOL=118    # 1.3, same name
+make PLUS=1          # 1.3 Plus, same name
+make ARCH=x86        # 32-bit, same name
+make ARCH=arm64      # 64-bit ARM (experimental), built on the ARM machine
 ```
+
+The 32-bit build on a 64-bit system needs GCC's 32-bit support (on Debian and Ubuntu, the `gcc-multilib` and `g++-multilib` packages). The ARM build does not round its math as the original server does, so it is not yet meant for competitive play.
 
 ### Windows (cross-compiled from Linux with MinGW)
 
@@ -88,15 +101,18 @@ make windows PROTOCOL=118    # 1.3, same name
 <details>
 <summary><b>Game version, automated builds and Makefile options</b></summary>
 
-Without `PROTOCOL`, or with `PROTOCOL=115`, the server is built as 1.0. Each platform and version keeps its own objects under `obj/`, so you can switch between them without `make clean`; both versions write the same file name, and `BIN_DIR=<folder>` builds into another folder to keep both.
+Without `PROTOCOL`, or with `PROTOCOL=115`, the server is built as 1.0. `PLUS=1` is a 1.3 build and can be combined with `ARCH` and `windows`. Each platform and version keeps its own objects under `obj/`, so you can switch between them without `make clean`; every version writes the same file name, and `BIN_DIR=<folder>` builds into another folder to keep several.
 
-Every push to `master` that changes the code builds both versions for both platforms on GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). The resulting binaries can be downloaded as artifacts from the repository's [Actions](https://github.com/JotaJazz/CoD2rev-Plus/actions) tab.
+Every push to `master` or `dev` that changes the code builds 1.0 and 1.3 for Linux (32 and 64-bit) and Windows, and 1.3 Plus for 64-bit Linux, on GitHub Actions ([`.github/workflows/build.yml`](.github/workflows/build.yml)). The resulting binaries can be downloaded as artifacts from the repository's [Actions](https://github.com/JotaJazz/CoD2rev-Plus/actions) tab.
 
 | Option | Default | Description |
 | --- | --- | --- |
+| `PROTOCOL` | `115` | `115` builds 1.0, `118` builds 1.3. |
+| `PLUS` | `0` | `1` builds CoD2 1.3 Plus, only for the Plus client. |
+| `ARCH` | `x64` | `x86` for 32-bit Linux, `arm64` for 64-bit ARM. Windows is always 32-bit. |
 | `WITH_LIBCOD` | `true` | Includes the libcod script extensions (bots, players, entities, weapons, utilities, etc.). |
 | `WITH_SQLITE` | `true` | Script functions for SQLite. |
-| `WITH_MYSQL` | `false` | Script functions for MySQL. Requires the MySQL client library. |
+| `WITH_MYSQL` | `false` | Script functions for MySQL. Requires the MySQL or MariaDB client library. |
 | `WITH_SPEEX` | `true` | `loadSoundFile`, `playSoundFile` and the other sound functions, with Speex (`src/libcod/speex`). |
 | `WITH_HTTP` | `true` | `httpFetch` and `webSocket*`, with Mbed TLS (`src/libcod/mbedtls`) for `https://` and `wss://`. |
 
@@ -109,7 +125,7 @@ Every push to `master` that changes the code builds both versions for both platf
 <details>
 <summary><b>Launchers, CD key authorization and systemd</b></summary>
 
-The launchers start in LAN mode by default (`dedicated 1`: LAN or direct IP); with `internet` they announce the server on the public list (`dedicated 2`). They set their values before `+exec server.cfg`, so `server.cfg` can change them. If the game is already running on the same PC, a server started after it moves to the next free port.
+The launchers start in LAN mode by default (`dedicated 1`: LAN or direct IP); with `internet` they announce the server on the public list (`dedicated 2`). They set their values before `+exec server.cfg`, so `server.cfg` can change them. If the game is already running on the same PC, a server started after it moves to the next free port; `net_strictPort 1` makes it stop instead.
 
 **Key authorization:** the server queries `cod2master.activision.com` to validate the key of every client that is not on the local network. With `sv_cracked 1` it still sends the query, but accepts the client whatever the answer is. The launchers only turn it on in LAN mode; in internet mode a valid key is required unless `server.cfg` turns it on.
 
@@ -129,9 +145,10 @@ The launchers start in LAN mode by default (`dedicated 1`: LAN or direct IP); wi
 ```bash
 python3 scripts/smoke_test.py /path/to/CoD2
 make PROTOCOL=118 && python3 scripts/smoke_test.py /path/to/CoD2 --protocol 118
+make PLUS=1 && python3 scripts/smoke_test.py /path/to/CoD2 --plus
 ```
 
-It starts the server in LAN mode with a temporary home folder, so the game folder is only read. It checks that the server loads a map and answers `getinfo`, `getstatus` and rcon, and that `scripts/cod2client.py`, a minimal client, can connect, receive the gamestate, enter the game and send commands, including a message split into fragments. Use a game folder with the stock `.iwd` files: mods in `main` that replace the gametype scripts can stop the map from loading.
+It starts the server in LAN mode with a temporary home folder, so the game folder is only read. It checks that the server loads a map and answers `getinfo`, `getstatus` and rcon, and that `scripts/cod2client.py`, a minimal client, can connect, receive the gamestate, enter the game, read snapshots and send commands, including a message split into fragments; it also tries the attacks the server must refuse. Use a game folder with the stock `.iwd` files: mods in `main` that replace the gametype scripts can stop the map from loading.
 
 `scripts/bots_test.py` installs the bots mod in a temporary folder, plays a map with six bots and checks that the waypoint graph is built, saved and read back, that the bots follow paths and use sights, grenades and knives, and that no script error occurs:
 
@@ -139,7 +156,7 @@ It starts the server in LAN mode with a temporary home folder, so the game folde
 python3 scripts/bots_test.py /path/to/CoD2 --map mp_carentan
 ```
 
-With `--gametype sd` or `--gametype ctf` it checks instead that the bots plant the bomb or pick up the enemy flag. `--bombmode 1` plays SD in single bomb mode, with one bomb site. `--corrupt-cache` starts from a damaged waypoint file, which the bots must replace with a new graph.
+With `--gametype sd`, `--gametype ctf` or `--gametype hq` it checks instead that the bots play the objective. `--bombmode 1` plays SD in single bomb mode, with one bomb site. `--corrupt-cache` starts from a damaged waypoint file, which the bots must replace with a new graph.
 
 `scripts/http_test.py` checks `httpFetch` and `webSocket*` against local HTTP, HTTPS, WS and WSS servers, and `scripts/check_docs.py` checks the documentation's links and paths.
 
@@ -165,15 +182,15 @@ make OBJ_ROOT=/tmp/asan/obj BIN_DIR=/tmp/asan/bin \
 | `src/server` | Server logic: clients, networking, rcon, master servers. |
 | `src/game`, `src/bgame` | Game logic. |
 | `src/script` | GSC script virtual machine. |
-| `src/qcommon`, `src/universal` | Shared code: commands, variables (dvars), file system, networking. |
+| `src/qcommon`, `src/universal` | Shared code: commands, variables (dvars), file system, networking, the Plus format. |
 | `src/xanim` | Models and animations. |
 | `src/stringed` | Localized strings. |
 | `src/libcod` | libcod script extensions, with the libraries they use: SQLite, yyjson, Speex, Mbed TLS and the MySQL headers. |
 | `src/win32`, `src/unix` | Platform-specific code. |
 | `src/zlib` | Copy of zlib. |
-| `docs` | Technical documentation for contributors and AI agents (index in [docs/README.md](docs/README.md)) and the change list. |
-| `scripts` | Launchers for Windows and Linux, the example `server.cfg` and its generator, the bots installer, the smoke test with its minimal client, the bots test, the HTTP and WebSocket test, and the documentation checker. |
-| `mods/bots` | The simple bots script mod. |
+| `docs` | Technical documentation for contributors and AI agents (index in [docs/README.md](docs/README.md)), the change list and the CoD2 1.3 Plus protocol. |
+| `scripts` | Launchers for Windows and Linux, the systemd unit, the example `server.cfg` and its generator, the bots installer, the smoke test with its minimal client, the bots test, the HTTP and WebSocket test, and the documentation checker. |
+| `mods/bots` | The bots script mod. |
 
 </details>
 

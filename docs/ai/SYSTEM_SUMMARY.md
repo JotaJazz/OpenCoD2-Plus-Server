@@ -1,7 +1,7 @@
 # System summary
 
-Live snapshot. Last updated: 2026-10-31 (`master` at `v1.0.0-rc1`, the first
-release candidate).
+Live snapshot. Last updated: 2026-11-02 (`master` and `dev` at the CoD2 1.3
+Plus build variant; the latest release is `v1.0.0-rc1`).
 
 ## Tree
 
@@ -12,7 +12,7 @@ scripts/                 launchers, systemd unit, cfg generator, bots installer,
   linux/                 iniciar_cod2rev.sh, cod2rev@.service
   windows/               iniciar_cod2rev.bat
 docs/                    this documentation, CHANGES.md
-.github/workflows/       build.yml (7 jobs: 4 Linux, 1 MySQL, 2 Windows)
+.github/workflows/       build.yml (8 jobs: 5 Linux with 1.3 Plus, 1 MySQL, 2 Windows)
 Makefile                 all builds
 README*.md               user README in 6 languages
 AGENTS.md                agent entry point
@@ -35,7 +35,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 
 | Subsystem | State |
 |---|---|
-| Reversed engine | Upstream's; synced to voron00 `dbe3621` (2026-10-31; its `libcod_t` move and SSE math not taken) |
+| Reversed engine | Upstream's; reviewed to voron00 `2d12404` (2026-11-02; its `libcod_t` move, SSE math and float math helpers not taken) |
 | Network hardening | Done: message/fragment bounds, rate limits, rcon lockout and whitelist, download checks, format strings |
 | Logging and admin | Done: log naming/rotation/timestamps, `g_logRotateSize`, forced rate/snaps, kick/timeout messages, clean SIGTERM/SIGINT/SIGHUP quit |
 | Long uptime | Time wrap restart moved to a map change after day 18.6; snapshot counters reload the map; full dvar pool is not fatal for scripts or rcon |
@@ -44,10 +44,12 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | JSON, HTTP/WebSocket, sounds | Done: yyjson, Mbed TLS 3.6.7 with own HTTP client, Speex 1.2.1 |
 | Bots mod | dm, tdm, sd, ctf, hq; A\* over per-map cached graphs |
 | One game for 1.0 and 1.3 | `net_altPort` (1.0 build): a second port announces 1.3, so one process is listed for both versions; run it without `iw_15.iwd` ([networking.md](../architecture/networking.md)) |
+| CoD2 1.3 Plus | `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)): only the Plus client, Plus version 122; handshake and snapshot offset done, a real match at 40 Hz left ([plus-protocol.md](../architecture/plus-protocol.md#milestones)); needs OpenCoD2-Plus, which cannot be distributed yet |
+| arm64 | `make ARCH=arm64`, experimental ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)): smoke and bots pass on a Raspberry Pi 5; not built by CI |
 | Listen server | `LISTEN_SERVER` builds the server into a client, for the maintainer's client project; off in this repo's builds |
 | Windows build | MinGW, static, threads through a stdcall wrapper |
 | Deployment | Launchers (LAN/internet mode, port 28960), `scripts/linux/cod2rev@.service` |
-| Releases | `v1.0.0-rc1` (pre-release): the six CI binaries with `LICENSE` and the example cfg; `master` takes fixes only until the final release |
+| Branches and releases | Work goes on `dev`, which reaches `master` for a release; `v1.0.0-rc1` (pre-release) has the six stock CI binaries with `LICENSE` and the example cfg |
 | Docs | This layer plus `scripts/check_docs.py` (2026-10-22) |
 
 ## Commands
