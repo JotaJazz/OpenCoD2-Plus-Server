@@ -88,7 +88,7 @@ make ARCH=x86        # 32 бита, то же имя
 make ARCH=arm64      # 64-битный ARM (экспериментально), собирается на машине ARM
 ```
 
-Сборке на 32 бита в 64-битной системе нужна поддержка 32 бит в GCC (в Debian и Ubuntu это пакеты `gcc-multilib` и `g++-multilib`). Сборка для ARM округляет математику не так, как оригинальный сервер, поэтому она пока не предназначена для соревновательной игры.
+Сборке на 32 бита в 64-битной системе нужна поддержка 32 бит в GCC (в Debian и Ubuntu это пакеты `gcc-multilib` и `g++-multilib`).
 
 ### Windows (кросс-компиляция из Linux с помощью MinGW)
 
@@ -175,7 +175,7 @@ python3 scripts/bots_test.py /путь/к/CoD2 --map mp_carentan
 
 ```bash
 make OBJ_ROOT=/tmp/asan/obj BIN_DIR=/tmp/asan/bin \
-  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -mfpmath=387 -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
+  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -msse2 -mfpmath=sse -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
   LFLAGS="-no-pie -m64 -fsanitize=address"
 ```
 

@@ -29,8 +29,12 @@ ifeq ($(PLUS),1)
 CFLAGS+=-DCOD2_PLUS
 endif
 LFLAGS=-no-pie
+# SSE2 rounds float math to single precision at each step, as the 1.3 client
+# does with x87 set to 24 bits (_controlfp(_PC_24)); x87's 80-bit default did
+# not, and its results depended on register spills (ADR 0017). arm64 rounds so
+# on its own.
 ifneq ($(ARCH),arm64)
-CFLAGS+=-mfpmath=387
+CFLAGS+=-msse2 -mfpmath=sse
 endif
 # Cheap protection against buffer overflows. The reversed code casts between
 # types and relies on signed overflow wrapping, which -fno-strict-aliasing and
@@ -54,7 +58,7 @@ else ifeq ($(ARCH),x64)
 CFLAGS+=-m64
 LFLAGS+=-m64
 else ifeq ($(ARCH),arm64)
-# The reversed code expects x86's signed char; no FMA, which rounds differently than x87.
+# The reversed code expects x86's signed char; no FMA, which rounds differently than SSE2.
 CFLAGS+=-fsigned-char -ffp-contract=off
 else
 $(error ARCH must be x86, x64 or arm64)

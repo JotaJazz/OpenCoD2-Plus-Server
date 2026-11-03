@@ -11,6 +11,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — float math on SSE2
+
+- The x87 flag assumed the original ran x87 at its default precision, but OpenCoD2-Plus's reconstruction shows the 1.3 client sets it to 24 bits (`_controlfp(_PC_24)` in `Sys_CreateConsole`), and the client predicts movement. Every x86 build now uses `-msse2 -mfpmath=sse`, which rounds float operations as that client does and no longer depends on register spills ([ADR 0017](../architecture/adr/0017-sse2-math.md)); `USE_SSE2` and upstream's approximations stay out. Only `Q_vsnprintf`'s `long double` keeps x87 instructions.
+- Smoke passes on 1.0, 1.3, 1.3 Plus and 32-bit; bots pass in tdm and sd on 64 and 32-bit. No measure of the difference against x87 was possible offline: the test client's input is not deterministic.
+- Left open: a real player on the SSE2 build, and the reversed code's doubles, which the client rounds to single precision.
+
 ## 2026-11-03 — menu commands, bad packets, chat marker, getIP
 
 - `mr` skips flood protection (menus would break) and runs the gametype's scripts each time: a client gets 20, then 20 a second (`score` alone already goes through flood protection; only `score ` with arguments skipped it). Malformed packets print at most 10 lines a second in all. Only 0x15 is kept at the start of chat: OpenCoD2-Plus's `cl_keys_mp.c` shows the client sends `say "\x15text"`, and 0x14 let a player show any localized game message. `getIP()` returns `127.0.0.1` for a local client without a proxy.

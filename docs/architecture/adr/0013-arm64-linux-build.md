@@ -1,6 +1,6 @@
 # 0013. Experimental arm64 Linux build
 
-- Status: Accepted
+- Status: Accepted; its rounding notes superseded by [0017](0017-sse2-math.md)
 - Date: 2026-11-02
 
 ## Context

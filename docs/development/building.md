@@ -73,7 +73,7 @@ A command-line `CFLAGS` replaces the Makefile's, so `-m64` and
 
 ```bash
 make OBJ_ROOT=<scratch>/asan_obj BIN_DIR=<scratch>/asan_bin \
-  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -mfpmath=387 -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
+  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -msse2 -mfpmath=sse -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
   LFLAGS="-no-pie -m64 -fsanitize=address"
 ```
 

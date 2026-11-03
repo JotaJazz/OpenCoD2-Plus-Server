@@ -88,7 +88,7 @@ make ARCH=x86        # 32-bit, same name
 make ARCH=arm64      # 64-bit ARM (experimental), built on the ARM machine
 ```
 
-The 32-bit build on a 64-bit system needs GCC's 32-bit support (on Debian and Ubuntu, the `gcc-multilib` and `g++-multilib` packages). The ARM build does not round its math as the original server does, so it is not yet meant for competitive play.
+The 32-bit build on a 64-bit system needs GCC's 32-bit support (on Debian and Ubuntu, the `gcc-multilib` and `g++-multilib` packages).
 
 ### Windows (cross-compiled from Linux with MinGW)
 
@@ -175,7 +175,7 @@ To look for memory errors, build the server with AddressSanitizer in a separate 
 
 ```bash
 make OBJ_ROOT=/tmp/asan/obj BIN_DIR=/tmp/asan/bin \
-  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -mfpmath=387 -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
+  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -msse2 -mfpmath=sse -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
   LFLAGS="-no-pie -m64 -fsanitize=address"
 ```
 

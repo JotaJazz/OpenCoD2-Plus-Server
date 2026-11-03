@@ -1,6 +1,6 @@
 # 0010. 64-bit is the default Linux build
 
-- Status: Accepted
+- Status: Accepted; its x87 math superseded by [0017](0017-sse2-math.md)
 - Date: 2026-10-31
 
 ## Context

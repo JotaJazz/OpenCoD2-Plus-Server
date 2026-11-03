@@ -88,7 +88,7 @@ make ARCH=x86        # 32 bits, même nom
 make ARCH=arm64      # ARM 64 bits (expérimental), compilé sur la machine ARM
 ```
 
-La compilation 32 bits sur un système 64 bits demande la prise en charge 32 bits de GCC (sous Debian et Ubuntu, les paquets `gcc-multilib` et `g++-multilib`). La compilation ARM n'arrondit pas ses calculs comme le serveur d'origine, elle n'est donc pas encore destinée au jeu compétitif.
+La compilation 32 bits sur un système 64 bits demande la prise en charge 32 bits de GCC (sous Debian et Ubuntu, les paquets `gcc-multilib` et `g++-multilib`).
 
 ### Windows (compilation croisée depuis Linux avec MinGW)
 
@@ -175,7 +175,7 @@ Pour chercher des erreurs mémoire, compilez le serveur avec AddressSanitizer da
 
 ```bash
 make OBJ_ROOT=/tmp/asan/obj BIN_DIR=/tmp/asan/bin \
-  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -mfpmath=387 -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
+  CFLAGS="-fno-pie -O1 -g -fno-omit-frame-pointer -msse2 -mfpmath=sse -DNDEBUG -DPROTOCOL_VERSION=115 -MMD -MP -m64 -D_FILE_OFFSET_BITS=64 -fsanitize=address" \
   LFLAGS="-no-pie -m64 -fsanitize=address"
 ```
 
