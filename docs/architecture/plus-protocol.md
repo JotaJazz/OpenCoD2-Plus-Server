@@ -7,7 +7,7 @@ This file is the source of truth; OpenCoD2-Plus follows it. The decision is
 
 | Field | Value |
 |---|---|
-| Name | CoD2 Plus |
+| Name | CoD2 Plus; players read "1.3 Plus" ([ADR 0014](adr/0014-name-1-3-plus.md)) |
 | Plus version | 122 |
 | Base | The 1.3 build (`make PROTOCOL=118`) |
 | State | Third version: milestones 0 and 2 are done, milestone 1 lacks a player on the internet, and milestone 3's format is in and lacks a real match |

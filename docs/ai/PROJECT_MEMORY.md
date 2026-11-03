@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — the name "1.3 Plus"
+
+- The maintainer wanted players to see Plus as a patch after 1.3, as CoD2x does with 1.4. "1.4" was rejected again: CoD2x uses it, and zk_libcod's `getProtocolString()` already returns it for Game Pass. Players read "1.3 Plus" ([ADR 0014](../architecture/adr/0014-name-1-3-plus.md)); `shortversion`, protocol 118 and the Plus version number stay.
+- Left open: renaming the notice and the client's console line.
+
 ## 2026-11-02 — arm64 on a Raspberry Pi 5
 
 - On a Pi 5 (Debian 12, gcc 12) the native build takes 1 min 50 s with `-j4`; smoke passes on 1.0 and 1.3 and bots pass. With 6 bots the server uses about 3% of a core and 116 MB.
