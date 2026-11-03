@@ -27,6 +27,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | `bin/cod2rev_lnxded` (64-bit) | `make` | protocols 115–119 (libcod) |
 | `bin/cod2rev_lnxded` (64-bit) | `make PROTOCOL=118` | protocol 118 |
 | `bin/cod2rev_lnxded` (32-bit) | `make ARCH=x86` (with or without `PROTOCOL=118`) | as the 64-bit build of the same version |
+| `bin/cod2rev_lnxded` (aarch64, experimental) | `make ARCH=arm64` on the ARM host | as the 64-bit build of the same version |
 | `bin/cod2rev_win32.exe` | `make windows` / `PROTOCOL=118` | as the Linux build of the same version |
 
 ## State per subsystem

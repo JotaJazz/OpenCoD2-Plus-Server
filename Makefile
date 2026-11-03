@@ -11,8 +11,11 @@ else
 ARCH=x64
 endif
 
-CFLAGS=-fno-pie -O1 -fno-omit-frame-pointer -mfpmath=387 -DNDEBUG -Wformat -DPROTOCOL_VERSION=$(PROTOCOL) -MMD -MP
+CFLAGS=-fno-pie -O1 -fno-omit-frame-pointer -DNDEBUG -Wformat -DPROTOCOL_VERSION=$(PROTOCOL) -MMD -MP
 LFLAGS=-no-pie
+ifneq ($(ARCH),arm64)
+CFLAGS+=-mfpmath=387
+endif
 # Cheap protection against buffer overflows. The reversed code casts between
 # types and relies on signed overflow wrapping, which -fno-strict-aliasing and
 # -fwrapv keep safe if the optimization level is ever raised.
@@ -34,8 +37,11 @@ LFLAGS+=-m32
 else ifeq ($(ARCH),x64)
 CFLAGS+=-m64
 LFLAGS+=-m64
+else ifeq ($(ARCH),arm64)
+# The reversed code expects x86's signed char; no FMA, which rounds differently than x87.
+CFLAGS+=-fsigned-char -ffp-contract=off
 else
-$(error ARCH must be x86 or x64)
+$(error ARCH must be x86, x64 or arm64)
 endif
 # Without 64-bit file offsets and inodes a 32-bit binary cannot list or open files
 # on file systems with large inode numbers (Windows drives under WSL, big XFS volumes).

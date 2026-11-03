@@ -5,6 +5,23 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — arm64 on a Raspberry Pi 5
+
+- On a Pi 5 (Debian 12, gcc 12) the native build takes 1 min 50 s with `-j4`; smoke passes on 1.0 and 1.3 and bots pass. With 6 bots the server uses about 3% of a core and 116 MB.
+- The maintainer played a few minutes with a real client against bots on it: movement and hits felt as on x86, and both logs were clean (head, torso, hand and leg hits recorded).
+- Left open: a full match with several real players before it is called more than experimental ([../roadmap/debt.md](../roadmap/debt.md)).
+
+## 2026-11-02 — experimental arm64 build
+
+- `make ARCH=arm64` builds natively on 64-bit ARM (a Raspberry Pi): no `-mfpmath=387`, plus `-fsigned-char` and `-ffp-contract=off` ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)). Under qemu in Docker it builds with the usual warnings and passes smoke and bots on 1.0; it found the dvar buffer bug below.
+- Rejected: armhf (32-bit ARM), and CI for it until it has run on real hardware.
+- Left open: a real Raspberry Pi with real clients, 1.3 on arm64, the rounding without x87 ([../roadmap/debt.md](../roadmap/debt.md)).
+
+## 2026-11-02 — dvar values shared one buffer
+
+- An arm64 build (qemu) failed the smoke test: `sv_serverid` read back as 0, so the test client never entered the game. `Dvar_ValueToString` used one static buffer, and the dvar query formats the current and reset values in one `printf`; x86 evaluates the arguments right to left and hid it as a wrong default, ARM left to right and showed the default as the value. Two alternating buffers fix both.
+- Smoke passes on 1.0 and 1.3 x64; the four builds compile.
+
 ## 2026-11-02 — security audit of the network surface
 
 - A read-only audit of what a remote host reaches (connectionless packets, the handshake, client messages, game input, libcod) found no memory corruption or crash; it found logic and denial-of-service issues, nine fixed: a client's port taken only from its own sequence and never from voice, an ack of a message never sent dropped, a connected challenge's GUID kept from later authorize replies, 64 client commands per message, `cp` bounded by the server's iwds, download acks only for blocks read, a seeded rate limiter hash, 10 rate limit reports a second, query challenges up to 128 characters, manymaps names without separators; a warning about player text in unsafe builtins.

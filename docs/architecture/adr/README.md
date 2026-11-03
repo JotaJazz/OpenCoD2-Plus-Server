@@ -19,6 +19,7 @@ folder existed, with the date the decision was made.
 | [0010](0010-64-bit-default-on-linux.md) | 64-bit is the default Linux build | Accepted |
 | [0011](0011-plus-protocol.md) | A negotiated Plus protocol on the plus branch | Superseded by 0012 |
 | [0012](0012-plus-leaves-1-3-out.md) | Plus leaves 1.3 clients out and raises the tick rate | Accepted |
+| [0013](0013-arm64-linux-build.md) | Experimental arm64 Linux build | Accepted |
 
 ## Template
 
