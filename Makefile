@@ -4,6 +4,19 @@ WINDRES=windres
 
 # Game version to build: 115 = 1.0, 118 = 1.3.
 PROTOCOL=115
+# PLUS=1 builds the CoD2 1.3 Plus server, which takes only the Plus client
+# (docs/architecture/plus-protocol.md); it is a 1.3 build.
+PLUS=0
+ifeq ($(PLUS),1)
+ifneq ($(origin PROTOCOL),file)
+ifneq ($(PROTOCOL),118)
+$(error PLUS=1 is a 1.3 build: leave PROTOCOL out or set it to 118)
+endif
+endif
+override PROTOCOL=118
+else ifneq ($(PLUS),0)
+$(error PLUS must be 0 or 1)
+endif
 # CPU architecture: x64 (64-bit) or x86 (32-bit). Windows is 32-bit only.
 ifeq ($(OS),Windows_NT)
 ARCH=x86
@@ -12,6 +25,9 @@ ARCH=x64
 endif
 
 CFLAGS=-fno-pie -O1 -fno-omit-frame-pointer -DNDEBUG -Wformat -DPROTOCOL_VERSION=$(PROTOCOL) -MMD -MP
+ifeq ($(PLUS),1)
+CFLAGS+=-DCOD2_PLUS
+endif
 LFLAGS=-no-pie
 ifneq ($(ARCH),arm64)
 CFLAGS+=-mfpmath=387
@@ -67,6 +83,10 @@ ifeq ($(ARCH),x86)
 BUILD_ARCH=
 else
 BUILD_ARCH=_$(ARCH)
+endif
+# The Plus build keeps its own objects and stamp too.
+ifeq ($(PLUS),1)
+BUILD_ARCH:=$(BUILD_ARCH)_plus
 endif
 # Each platform and game version keeps its own objects, so they can be built side by side.
 OBJ_ROOT=obj

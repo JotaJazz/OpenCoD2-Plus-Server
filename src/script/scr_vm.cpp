@@ -187,6 +187,7 @@ void Scr_StackClear( void )
 	scrVmPub.top = scrVmPub.stack;
 }
 
+#ifdef COD2_PLUS
 /*
 ==============
 Scr_FramesPerSecond
@@ -206,6 +207,7 @@ static float Scr_FramesPerSecond()
 
 	return fps ? 1000.0f / ( 1000 / fps->current.integer ) : 20.0f;
 }
+#endif
 
 /*
 ==============
@@ -4041,6 +4043,7 @@ post_builtin:
 			continue;
 
 		case OP_wait:
+#define WAIT_FRAME_TIME 20 // ideally should use sv_fps value instead
 			assert(Scr_IsInScriptMemory( pos ));
 			switch ( top->type )
 			{
@@ -4051,7 +4054,11 @@ post_builtin:
 					goto error;
 				}
 
+#ifdef COD2_PLUS
 				waitTime = Q_rint(top->u.floatValue * Scr_FramesPerSecond());
+#else
+				waitTime = Q_rint(top->u.floatValue * WAIT_FRAME_TIME);
+#endif
 
 				if ( !waitTime )
 				{
@@ -4066,7 +4073,11 @@ post_builtin:
 					goto error;
 				}
 
+#ifdef COD2_PLUS
 				waitTime = Q_rint(top->u.intValue * Scr_FramesPerSecond());
+#else
+				waitTime = top->u.intValue * WAIT_FRAME_TIME;
+#endif
 				break;
 
 			default:
