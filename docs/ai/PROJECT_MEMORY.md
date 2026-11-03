@@ -5,6 +5,10 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-02 — the notice says "1.3 Plus"
+
+- `PLUS_NOTICE` and the `sv_plusNotice` description name the CoD2 1.3 Plus client ([ADR 0014](../architecture/adr/0014-name-1-3-plus.md)); the smoke test on the 1.3 build shows the new text.
+
 ## 2026-11-02 — the name "1.3 Plus"
 
 - The maintainer wanted players to see Plus as a patch after 1.3, as CoD2x does with 1.4. "1.4" was rejected again: CoD2x uses it, and zk_libcod's `getProtocolString()` already returns it for Game Pass. Players read "1.3 Plus" ([ADR 0014](../architecture/adr/0014-name-1-3-plus.md)); `shortversion`, protocol 118 and the Plus version number stay.

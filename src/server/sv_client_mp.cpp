@@ -695,7 +695,7 @@ SV_DirectConnect
 A "connect" OOB command has been received
 ==================
 */
-#define PLUS_NOTICE "This server needs the current CoD2 Plus client: github.com/JotaJazz/OpenCoD2-Plus/releases"
+#define PLUS_NOTICE "This server needs the current CoD2 1.3 Plus client: github.com/JotaJazz/OpenCoD2-Plus/releases"
 
 /*
 ==================
