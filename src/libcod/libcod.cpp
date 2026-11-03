@@ -1252,9 +1252,25 @@ static bool SV_ResolveMaster_libcod( int index, netadr_t *adr )
 	return true;
 }
 
+static netadr_t masterAdr[MAX_MASTER_SERVERS];
+
+// The resolved masters: queries from them skip the global query limits
+bool SV_IsMasterAddress( netadr_t from )
+{
+	for ( int i = 0 ; i < MAX_MASTER_SERVERS ; i++ )
+	{
+		if ( masterAdr[i].type == NA_IP && from.type == NA_IP && memcmp( masterAdr[i].ip, from.ip, 4 ) == 0 )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void SV_MasterHeartbeat_libcod(const char *hbname)
 {
-	static netadr_t	adr[MAX_MASTER_SERVERS];
+	netadr_t *adr = masterAdr;
 	netadr_t alt;
 	int	i;
 
@@ -1300,11 +1316,11 @@ void SV_MasterHeartbeat_libcod(const char *hbname)
 				continue;
 			}
 
-			SVC_Status( adr[i] );
+			SVC_Status( adr[i], true );
 
 			alt = adr[i];
 			alt.altPort = 1;
-			SVC_Status( alt );
+			SVC_Status( alt, true );
 		}
 	}
 }

@@ -62,7 +62,9 @@ New code that reads from the network follows them:
   voice packets).
 - Connectionless commands that answer with data (`getinfo`, `getstatus`,
   `getchallenge`, `rcon`) go through `SVC_RateLimitAddress` (per address) and
-  `SVC_RateLimit` (global); `connect` has the per-address one, on LAN too but
+  `SVC_RateLimit` (global: `getinfo` 100 a second, `getstatus` 10, each its
+  own, and neither for the masters, which also get this server's status
+  unasked whatever the limits); `connect` has the per-address one, on LAN too but
   for `127.0.0.1`, which is where a local proxy's players come from;
   `ipAuthorize` and `disconnect` have none. The global `getchallenge` limit
   keeps the 1024-slot table from turning over faster than a join takes, so an

@@ -400,6 +400,84 @@ def check_console_log(path, check):
     check('sv_logRcon 0 hides rcon commands', 'Rcon from' in text and 'smokehidden' not in text)
 
 
+def check_vote_limit(port, protocol, password, check):
+    """A player calls at most three votes a map. Each vote kicks a client of
+    its own, so they pass at once and the voter stays."""
+    server_id = int(re.search(r'"sv_serverid" is: ?"(-?\d+)', rcon(port, password, 'sv_serverid')).group(1))
+    voter = cod2client.Client(port)
+    targets = []
+    try:
+        if voter.connect(protocol, 'smokevoter') is not None or not voter.request_gamestate(server_id):
+            check('a player calls at most three votes', False, 'voter did not join')
+            return
+        voter.enter_game(server_id, 1.0)
+        # join a team: spectators cannot call votes
+        menus = {name: i for i, name in ((i, voter.state.configstrings.get(1246 + i)) for i in range(32)) if name}
+        team = next(name for name in menus if name.startswith('team_'))
+        voter.command(server_id, f'mr {server_id} {menus[team]} autoassign')
+        voter.read_frames(1.0)
+        weapons = {'american': 'm1garand_mp', 'british': 'enfield_mp', 'russian': 'mosin_nagant_mp', 'german': 'kar98k_mp'}
+        for name, index in menus.items():
+            if name.startswith('weapon_') and name[7:] in weapons:
+                voter.command(server_id, f'mr {server_id} {index} {weapons[name[7:]]}')
+                voter.read_frames(1.0)  # flood protection: one command each 800 ms
+        for n in range(4):
+            target = cod2client.Client(port)
+            targets.append(target)
+            target.connect(protocol, f'smoketarget{n}')
+            target.request_gamestate(server_id)
+            target.enter_game(server_id, 0.3)
+        status = rcon(port, password, 'status')
+        nums = [int(m.group(1)) for m in re.finditer(r'^\s*(\d+)\s+\S+\s+\S+\s+\S+\s+smoketarget', status, re.M)]
+        replies = []
+        for num in nums:
+            voter.command(server_id, f'callvote clientkick {num}')
+            frames = voter.read_frames(1.0)
+            replies.append(next((c for f in frames for c in f['commands'] if 'GAME_CALLEDAVOTE' in c or 'GAME_MAXVOTES' in c), ''))
+        called = sum('GAME_CALLEDAVOTE' in r for r in replies)
+        check('a player calls at most three votes', len(nums) == 4 and called == 3 and 'GAME_MAXVOTESCALLED' in replies[3],
+              f'{called} called, then {replies[3][:30] if len(replies) == 4 else replies}')
+    finally:
+        voter.close()
+        for target in targets:
+            target.close()
+
+
+def check_query_limits(port, check):
+    """getinfo and getstatus have global limits of their own: a burst of
+    getstatus must not silence getinfo, which browsers use, and getinfo has
+    room for 100 a second. 127.0.0.1 has no per-address limit."""
+    time.sleep(1.5)  # both buckets refill
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.settimeout(0.5)
+        for _ in range(40):
+            s.sendto(PREFIX + b'getstatus x', ('127.0.0.1', port))
+        s.sendto(PREFIX + b'getinfo afterstatus', ('127.0.0.1', port))
+        statuses, info = 0, False
+        try:
+            while True:
+                data, _ = s.recvfrom(65535)
+                statuses += data[len(PREFIX):].startswith(b'statusResponse')
+                info = info or data[len(PREFIX):].startswith(b'infoResponse')
+        except OSError:
+            pass
+    check('getinfo answers right after a getstatus burst', info, f'{statuses} of 40 getstatus answered')
+
+    time.sleep(1.5)
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.settimeout(0.5)
+        for _ in range(50):
+            s.sendto(PREFIX + b'getinfo x', ('127.0.0.1', port))
+        infos = 0
+        try:
+            while True:
+                s.recvfrom(65535)
+                infos += 1
+        except OSError:
+            pass
+    check('getinfo has room for a burst', infos >= 45, f'{infos} of 50')
+
+
 def check_challenge_during_queries(port, check):
     """A burst of queries, which share a low global limit, must not stop a player joining."""
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -610,7 +688,9 @@ def main():
 
                 if protocol.isdigit():
                     check_client(port, int(protocol), args.plus, password, os.path.join(home, 'main', 'games_mp.log'), check)
+                    check_vote_limit(port, int(protocol), password, check)
                     check_connect_limit(port, int(protocol), args.plus, check)
+                    check_query_limits(port, check)
                     check_challenge_during_queries(port, check)
 
                 # manymaps must not take a map name that leaves its library

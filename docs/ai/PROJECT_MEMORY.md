@@ -9,6 +9,13 @@ rejected and what is left open; for what changed in detail see
 
 
 
+
+## 2026-11-03 — query limits and the vote count
+
+- `getinfo` and `getstatus` shared ioq3's global 10 replies a second, so a few addresses hid the server from browsers and even stopped the status it pushes to the masters. `getinfo` has 100 a second of its own, `getstatus` keeps 10, and the resolved masters skip both global limits (their per-address limit stays).
+- `teamVoteCount` was checked and never counted, in 1.3 too (OpenCoD2-Plus's reconstruction of `Cmd_CallVote_f`, which names it `voteCount`): one player could call votes without end. It is counted when a vote starts, so three votes a map, as in Quake 3. Smoke checks both (a burst of getstatus then getinfo, 50 getinfo at once, four votes that kick a target each) and fails without the fix.
+- Left open: spoofed addresses still fill the global limits, and a reconnect resets the vote count ([../roadmap/debt.md](../roadmap/debt.md)).
+
 ## 2026-11-03 — native Windows build checked
 
 - The Makefile's `Windows_NT` branch (`md`, `del`, cmd paths) had never run: every Windows binary was cross-compiled. A CI job on `windows-latest` now builds 1.0 and 1.3 from `cmd` with MSYS2's 32-bit MinGW-w64; it passed at the first run with the four known warnings.
