@@ -2734,6 +2734,11 @@ void BG_AnimParseAnimScript( animScriptData_t *scriptData, loadAnim_t *pLoadAnim
 				}
 				defineType = BG_IndexForString( token, animConditionsStr, qfalse );
 
+				if ( animConditionsTable[defineType].type != ANIM_CONDTYPE_BITFLAGS )
+				{
+					BG_AnimParseError( "BG_AnimParseAnimScript: can not make a define of type '%s'", token );
+				}
+
 				// read in the define
 				token = Com_ParseOnLine( &text_p );
 				if ( !token || !token[0] )
