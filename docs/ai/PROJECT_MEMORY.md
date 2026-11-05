@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-05 — upstream review to 5202c78
+
+- Of 18 voron00 commits, taken: the ADS check for linked players (the 1.3 binary's `PM_IsAdsAllowed` at `0x80ec9ea` agrees), the animscript define check, and `status` showing a proxied player's real address. Reading their Huffman import found that compression wrote past `svCompressBuf` on a message of rare bytes (11 bits each); it is now bounded, also on 1.0, where upstream's bound is eight times too big.
+- Rejected: the VM refactor that drops `optimize("O0")` from `VM_Execute`, because at `-O1` GCC still warns that `gOpcode`, `gParamCount` and five more locals are clobbered by `longjmp` ([../roadmap/debt.md](../roadmap/debt.md)); the struct alignment changes; the math refactors (same results or float order changed against 1.3); `SV_CanReplaceServerCommand` returning -1, with no exploit described; their `realIP`, which trusts the `ip` key from any client.
+- Already here: the prone and crouch masks, the STRAFING condition, the format string in `logPrint`, the time effect mask, the `nextdl` guard and the bounded `MSG_ReadBitsCompress`.
+
 ## 2026-11-03 — dev tested before merge
 
 - The six commits from SSE2 to milliseconds in float build on all five targets; smoke passes on 1.0, 1.3, 1.3 Plus and 32-bit, and bots pass in tdm, sd and ctf on 64-bit and tdm and sd on 32-bit. A real 1.3 client played on the SSE2 1.3 build over LAN and movement felt as usual, which closes the real-player lead of the SSE2 stage.
