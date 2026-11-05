@@ -78,6 +78,10 @@ the OpenCoD2-Plus releases.
 `sv_plusNotice` holds the text, for admins who need another language or link,
 and an empty value restores the default.
 
+The read-only `sv_plus` dvar holds `PLUS_VERSION` in this build only, so a
+mod can require it with `getCvarInt("sv_plus")`. It is not in serverinfo
+nor in info replies: the version still travels only in the handshake.
+
 ## Format
 
 Version 122 changes one thing. A Plus snapshot has its own message byte,

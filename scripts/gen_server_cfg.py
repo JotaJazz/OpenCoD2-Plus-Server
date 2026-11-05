@@ -194,6 +194,7 @@ DESC = {
  'net_ip':'local address to bind to',
  'net_port':'UDP port',
  'net_noudp':'disable UDP networking',
+ 'sv_plus':'make PLUS=1 build only: the Plus protocol version, so a mod can require this build',
  'sv_plusNotice':'make PLUS=1 build only: text shown to a client that is not CoD2 1.3 Plus; empty = the default, with the link to the client',
  'net_altPort':'second UDP port of the 1.0 build, announced as 1.3 so the server is listed for both versions; 0 = closed (set it on the command line)',
  'net_strictPort':'1 = a busy net_port stops the server instead of moving it to one of the next 9 ports (set it on the command line)',

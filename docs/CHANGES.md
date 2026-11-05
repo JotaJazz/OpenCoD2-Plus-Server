@@ -146,6 +146,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `logTimestamps` | `0` | 0–1 | `1` starts each console log line with the date and time. |
 | `g_logRotateSize` | `0` | 0–2047 | Size in MB at which `g_log` (`games_mp.log`) is rotated when the next map starts. `0` never rotates it. |
 | `g_logRotate` | `1` | 1–1000 | Older game logs kept when `g_logRotateSize` rotates it, as `<name>.1` (newest) to `<name>.N`. |
+| `sv_plus` | `122` | read-only | `make PLUS=1` build only: the Plus protocol version, so a mod can require this build with `getCvarInt("sv_plus")`. Not sent in serverinfo; other builds do not have it. |
 | `sv_plusNotice` | empty | text | `make PLUS=1` build only: what a client without CoD2 Plus reads when refused. Empty uses the default, with the link to the client. |
 | `net_altPort` | `0` | 0–65535 | Second UDP port of the 1.0 build, announced as protocol 118 and version 1.3. `0` keeps it closed. Only read at start, so set it on the command line. |
 | `net_strictPort` | `0` | 0–1 | `1` stops the server when `net_port` is busy instead of trying the next 9 ports. Only read at startup, so set it on the command line. |

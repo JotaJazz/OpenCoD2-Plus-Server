@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-05 — sv_plus for scripts
+
+- The `PLUS=1` build registers the read-only `sv_plus` = `PLUS_VERSION` (122), so zPAM Plus can require this build: `getCvar` cannot tell a missing dvar from an empty one, so `sv_plusNotice` or `g_forceRate` could not detect it.
+- It stays out of serverinfo and info replies; the Plus version is announced only in the handshake (plus-protocol.md). Other builds do not register it, but a `+set sv_plus` there still creates a plain dvar.
+
 ## 2026-11-05 — VM_Execute optimized
 
 - `VM_Execute` lost `optimize("O0")`: upstream's `5942562` keeps the frame in a `function_stack_t` whose address escapes, and `gOpcode`, `gParamCount`, `objectId`, `fieldValueId`, `currentCaseValue` and `currentCodePos`, which cross a script error's `longjmp`, are `volatile`. `-Wclobbered` is clean on 64-bit, 32-bit, 1.3, Plus and MinGW.

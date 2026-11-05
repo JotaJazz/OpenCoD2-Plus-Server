@@ -44,7 +44,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | JSON, HTTP/WebSocket, sounds | Done: yyjson, Mbed TLS 3.6.7 with own HTTP client, Speex 1.2.1 |
 | Bots mod | dm, tdm, sd, ctf, hq; A\* over per-map cached graphs |
 | One game for 1.0 and 1.3 | `net_altPort` (1.0 build): a second port announces 1.3, so one process is listed for both versions; run it without `iw_15.iwd` ([networking.md](../architecture/networking.md)) |
-| CoD2 1.3 Plus | `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)): only the Plus client, Plus version 122; handshake and snapshot offset done, a real match at 40 Hz left ([plus-protocol.md](../architecture/plus-protocol.md#milestones)); needs OpenCoD2-Plus, which cannot be distributed yet |
+| CoD2 1.3 Plus | `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)): only the Plus client, Plus version 122, which scripts read from the read-only `sv_plus`; handshake and snapshot offset done, a real match at 40 Hz left ([plus-protocol.md](../architecture/plus-protocol.md#milestones)); needs OpenCoD2-Plus, which cannot be distributed yet |
 | arm64 | `make ARCH=arm64`, experimental ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)): smoke and bots pass on a Raspberry Pi 5; not built by CI |
 | Listen server | `LISTEN_SERVER` builds the server into a client, for the maintainer's client project; off in this repo's builds |
 | Windows build | MinGW, static, threads through a stdcall wrapper |
