@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-05 — traces before the first frame
+
+- zPAM Plus `re` crashed the server on `mp_toujane_fix` and `mp_burgundy`: its `getPlant` traced into a map's script model during `CodeCallback_StartGameType`, and `g_sv_skel_memory_start` was still NULL because only frames and packets call `SV_ResetSkeletonCache`. Later maps worked, as the pointer stays set; every build was affected, not only Plus.
+- `SV_InitGameVM` now resets the cache before `G_InitGame`. There is no script error to raise: the trace is legal and now returns the hit. The smoke test runs a `smoke` gametype that traces into a barrel in its `main`.
+
 ## 2026-11-05 — sv_plus for scripts
 
 - The `PLUS=1` build registers the read-only `sv_plus` = `PLUS_VERSION` (122), so zPAM Plus can require this build: `getCvar` cannot tell a missing dvar from an empty one, so `sv_plusNotice` or `g_forceRate` could not detect it.
