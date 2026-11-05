@@ -22,6 +22,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 
 ## Security and stability
 
+- **Compressed messages bounded:** the server Huffman-codes each message to a client into a stack buffer of the largest message size, but a rare byte takes up to 11 bits, so a message full of them (chat text, for one) grew past the buffer on 1.3; on 1.0 the buffer is 16 KB for snapshots of up to 128 KB. Compression now stops at the buffer's end and the client is dropped with `EXE_SERVERMESSAGEOVERFLOW`.
 - **manymaps map names checked:** the map name built the paths of the link manymaps creates, so `map ../x` (from rcon, or a mod passing player text to `map`) linked an `.iwd` from outside the library to outside the game folder. Names with `/`, `\` or `:` are no longer looked up in the library.
 - **Over-long query challenges ignored:** a `getinfo` or `getstatus` whose challenge filled the info string made every later key fail and print the whole string, about 16 KB of console and log per request. As in ioquake3, a challenge over 128 characters gets no reply.
 - **Rate limiter reports throttled:** each request the limiter dropped started a script thread (`CodeCallback_CLSpam`, or `CodeCallback_DPrintf` through the debug print), so a flood from forged addresses turned into script work. At most 10 drops a second are reported now.
