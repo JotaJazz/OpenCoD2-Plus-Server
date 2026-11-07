@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-07 — the archive at 62.5 Hz
+
+- Looking into the antilag (it rewinds only the origin; the pose, yaw, lean and stance stay at the present, next work), an agent found that `SV_GetCachedSnapshot` counted `sv_fps` frames a second: at 62.5 Hz a second back was 960 ms, so the antilag and the killcam took frames up to two later. It counts whole frames now, in every build; 20 and 40 Hz do not change.
+- `plus_rules_test.py --only archive_time` follows a bot that moves 100 units a second, so its origin tells the frame's time: the archived `commandTime` is moved to the present. The test mod now calls `setArchive(true)`, which stock gametypes do and the antilag needs.
+- Not checked: the interpolation of `SV_GetClientPositionsAtTime` between two frames at 62.5 Hz.
+
 ## 2026-11-07 — the server sets the rate of Plus clients
 
 - The maintainer chose that Plus servers are named by their rate (20, 40, 60 Hz) and that the admin sets it for everyone. `SV_PlusRate` gives each Plus client a snapshot every frame and 1,000 bytes a second per Hz (25,000 at least), unless `g_forceSnaps` or `g_forceRate` say otherwise, read per message: the stock code read them only at connect and on a userinfo change, so an rcon change missed connected players. `sv_maxRate` (max 25000) no longer caps them.

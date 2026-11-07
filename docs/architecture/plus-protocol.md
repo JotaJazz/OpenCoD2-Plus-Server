@@ -208,8 +208,16 @@ loop of `wait 0.05` runs 4% faster.
 Checked and left alone: the 50 ms step in `SpectatorClientEndFrame` searches
 back through the archive and does not set the killcam's speed;
 `src/game/g_items_mp.cpp` scales its speed by its own 50 ms; `FRAMETIME` is
-100 and is not a server frame; the archive and the antilag read `sv_fps`.
-`NUM_ARCHIVED_FRAMES` holds 60 s at 20 Hz and 30 s at 40.
+100 and is not a server frame. `NUM_ARCHIVED_FRAMES` holds 60 s at 20 Hz,
+30 s at 40 and 19 s at 62.5.
+
+The archive, which the antilag and the killcam read, counted `sv_fps` frames a
+second (`SV_GetCachedSnapshot`, `src/server/sv_snapshot_mp.cpp`), while a frame
+lasts `1000 / sv_fps` whole milliseconds: at 62.5 Hz a second back was 960 ms,
+so the antilag put a player where they were up to two frames after the shot.
+It now counts whole frames, in every build; at 20 and 40 Hz nothing changes.
+`plus_rules_test.py --only archive_time --fps N` follows a moving bot a second
+back.
 
 Plus servers are named by their rate, 20, 40 or 60 Hz, and the admin sets it
 for everyone: on a Plus server `sv_fps` alone is the setting. A stock client
