@@ -9,7 +9,7 @@ rejected and what is left open; for what changed in detail see
 
 - zPAM 4.x tunes its shotgun ranges for CoD2x's `g_shotgun_spread_fix` (CoD2x 19495e0): 8 pellets on one of two fixed patterns, turned at random per shot. `G_BulletFireSpread` has it under `LIBCOD`, same name and patterns, off by default, in every build: the server traces the pellets and sends their impacts, and no cgame traces them, so clients need nothing.
 - Rejected: a Plus version bump as the signal (the maintainer's call), as the client would have to bump in step for a change it does not share. zPAM sets the dvar as it does on CoD2x; a server without it ignores it.
-- `plus_rules_test.py --only shotgun_spread` checks the impacts' distances from the aim against the patterns; shots with a pellet past its 800 units are left out.
+- `plus_rules_test.py --only shotgun_spread` turns the player to a wall the whole spread meets (a pellet past its 800 units sends no impact) and checks the impacts' distances from the aim against the patterns, both of which must come in 12 shots.
 
 ## 2026-11-07 — Plus 123: the climbing sound, client side
 
