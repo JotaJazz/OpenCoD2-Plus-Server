@@ -75,6 +75,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
   - **Prone peek:** going prone while leaning no longer moves the head and hitbox from the side to the middle in one frame. The lean comes back to the prone limit as fast as a lean let go, about 300 ms, while the body goes down.
   - **Climbing sound:** nothing changes here; the Plus client plays the weapon raise that a ladder or a mantle sends with no weapon, so every player hears what the climber hears.
   - **MG clip:** leaving a turret keeps the player behind the gun, where using it put them, instead of taking them back to where they stood when they took it, so a turret can no longer be used to peek from behind cover.
+- **Fixed shotgun pellet spread (from CoD2x, same name):** with `g_shotgun_spread_fix 1` the shotgun's 8 pellets follow one of CoD2x's two fixed patterns, turned at random per shot, so the same shot no longer kills or misses by chance; zPAM 4.x tunes its shotgun ranges for it. The server traces the pellets and sends their impacts, so every client, stock or Plus, sees them where they hit. Off by default.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
 - **20% less traffic to clients:** the snapshot writer sent every field of a changed entity in full, even the ones that had not changed. It now marks them as unchanged, as the original does, with the same network format, so every client benefits.
 - **Master servers:**
@@ -193,6 +194,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `loc_loadLocalizedMods` | `0` | 0–1 | `1` lists the mod's `localized_*.iwd` files for pure clients too. |
 | `g_bulletDrop` | `0` | 0–1 | `1` lets `enableBulletDrop` give a player's bullets travel time and drop. |
 | `g_bulletDropMaxTime` | `10000` | 50–60000 | Milliseconds a dropping bullet flies before it is dropped. |
+| `g_shotgun_spread_fix` | `0` | 0–1 | `1` fires the 8 pellets of a shotgun on one of CoD2x's two fixed patterns, turned at random per shot, instead of each at random within the spread. Takes precedence over `g_fixedWeaponSpreads` for an 8-pellet weapon. |
 | `sv_httpAllowedHosts` | `""` | — | Hosts `httpFetch` and `webSocketConnect` may reach, separated by spaces or commas; `*.example.com` allows its subdomains. Empty allows every host. |
 | `sv_libcodUnsafe` | `0` | 0–1 | `1` lets scripts use the libcod functions that reach the shell, raw memory, files by any path or any network address. Command line only. |
 | `sv_httpAllowPrivate` | `0` | 0–1 | `1` lets `httpFetch` and `webSocketConnect` connect to loopback, private, link-local, shared and multicast addresses. Command line only. |

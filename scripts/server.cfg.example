@@ -151,6 +151,7 @@ set sv_mapRotation "gametype tdm map mp_toujane gametype tdm map mp_carentan gam
 // set jump_bounceEnable 0                     // bool, needs sv_cheats 1: keep speed when landing on slopes (bouncing)
 // set g_mantleBlockEnable 1                   // bool
 // set g_fixedWeaponSpreads 0                  // bool: use a fixed spread pattern instead of random spread
+// set g_shotgun_spread_fix 0                  // bool: fire the 8 shotgun pellets on a fixed pattern, turned at random per shot (CoD2x)
 // set g_dropGrenadeOnDeath 1                  // bool: a player killed while holding a primed grenade drops it
 // set sv_botUseTriggerUse 0                   // bool: send bots a "bot_trigger" notify for the use triggers they stand in
 // set g_bulletDrop 0                          // bool: let enableBulletDrop give a player's bullets travel time and drop

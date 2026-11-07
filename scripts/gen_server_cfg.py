@@ -159,6 +159,7 @@ DESC = {
  'g_playerCollision':'players collide with each other',
  'g_playerEject':'push apart players stuck inside each other',
  'g_fixedWeaponSpreads':'use a fixed spread pattern instead of random spread',
+ 'g_shotgun_spread_fix':'fire the 8 shotgun pellets on a fixed pattern, turned at random per shot (CoD2x)',
  'g_dropGrenadeOnDeath':'a player killed while holding a primed grenade drops it',
  'g_speed':'player movement speed',
  'g_gravity':'world gravity',
