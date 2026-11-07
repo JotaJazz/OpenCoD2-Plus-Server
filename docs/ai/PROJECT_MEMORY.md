@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-07 — turrets and trigger_hurt at any sv_fps
+
+- Toward 40–60 Hz (the maintainer wants aiming and shots to feel smoother; a friend tests over the internet tonight): a manned MG took 50 ms off its shot timer every frame, so it fired twice as fast at 40 Hz and once a frame at 62.5. In `PLUS=1` turrets think every frame and step by `level.frameTime`, the MG carries its time past a shot, and `trigger_hurt` keeps a 50 ms grid. Server only; Plus version 123.
+- Left alone: `SpectatorClientEndFrame`'s 50 ms step searches the archive (an agent read it as the killcam's speed); `wait 0.05` is 48 ms at 62.5 Hz. The `trigger_hurt` grid was not run: stock maps only have death zones.
+- `plus_rules_test.py --only mg_rate --fps N` fails on other builds above 20 Hz (25 and 16 ms a shot); its checks that shoot run before `mg_clip`, whose turret takes pellets that a `bulletTrace` misses. Bots pass tdm and sd at 40 and 60 Hz (`bots_test.py --fps`).
+
 ## 2026-11-07 — fixed shotgun spread
 
 - zPAM 4.x tunes its shotgun ranges for CoD2x's `g_shotgun_spread_fix` (CoD2x 19495e0): 8 pellets on one of two fixed patterns, turned at random per shot. `G_BulletFireSpread` has it under `LIBCOD`, same name and patterns, off by default, in every build: the server traces the pellets and sends their impacts, and no cgame traces them, so clients need nothing.

@@ -185,10 +185,25 @@ clients and 20 bots, 100 `wait 0.05` and 10 `wait 1` took:
 | 40 | 5,000 ms | 10,000 ms |
 | 60 | 4,800 ms | 10,080 ms |
 
-40 Hz is the first target, because it is exact for what still works in steps of
-50 ms: at 62.5 Hz a `wait 0.05` lasts 48 ms, and the turrets, which think every
-50 ms (`src/game/g_misc_mp.cpp`), would wait for the next frame and turn slower.
-The same goes for 50 Hz, at 60 ms a think. Going past 40 means fixing those.
+40 Hz was the first target, because it divides the 50 ms steps that game code
+still took per frame or per think. It did not hold for the turrets: a manned MG
+took 50 ms off its time between shots every frame, so at 40 Hz it fired twice
+as fast, and three times at 62.5 Hz (once a frame); the sound of its fire ended
+as early. An unmanned turret thought every 50 ms, every 64 at 62.5 Hz, and
+turned back 22% slower; a `trigger_hurt` hurt every 60 or 64 ms at 50 or 62.5 Hz.
+
+In the `PLUS=1` build these follow the frame: the turrets think every frame and
+step by `level.frameTime`, a manned MG keeps the time past its last shot so a
+frame that does not divide `fireTime` keeps its rate, and a `trigger_hurt` that
+is touched hurts on a 50 ms (or 1 s) grid (`src/game/g_misc_mp.cpp`,
+`src/game/g_trigger_mp.cpp`). At 20 Hz they do what they did. Server code
+only, so the Plus version stays 123. `plus_rules_test.py --only mg_rate --fps N`
+checks the MG at 50 ms a shot and the turret at 200 degrees a second; other
+builds fail it above 20 Hz. The stock maps' `trigger_hurt` are death zones,
+where the rate does not show; its grid was not run.
+
+What is left at 62.5 Hz: a `wait 0.05` lasts 48 ms, three frames, so a script
+loop of `wait 0.05` runs 4% faster.
 
 Checked and left alone: the 50 ms step in `SpectatorClientEndFrame` searches
 back through the archive and does not set the killcam's speed;
