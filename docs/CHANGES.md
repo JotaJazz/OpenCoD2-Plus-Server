@@ -70,6 +70,8 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 - **Script VM optimized:** the interpreter loop was built without optimization because its state had to survive the jump out of a script error. That state now stays in memory, so the loop is optimized like the rest: a script-heavy loop runs about 11% faster.
 - **CoD2 Plus handshake:** the `make PLUS=1` build (CoD2 1.3 Plus) only takes the CoD2 Plus client, and tells any other client to update to CoD2 1.3 Plus. The 1.0 build, bots and local clients are not affected.
 - **CoD2 Plus snapshots:** the `make PLUS=1` build sends the CoD2 Plus client entity times as a short offset, about 12% less traffic at 40 Hz. Plus version 122 needs the matching client.
+- **CoD2 Plus gameplay rules (Plus version 123):** the `make PLUS=1` build fixes bugs that zPAM fixed from script, for Plus clients only, which predict the same ([plus-protocol.md](architecture/plus-protocol.md#version-123)):
+  - **Fast reload:** firing a bolt-action or the shotgun, pressing reload and switching weapons twice no longer fires again sooner than the rechamber allows. A switch taken back while the weapon still drops raises it again, and a reload that cuts the shot keeps the shot's time left.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
 - **20% less traffic to clients:** the snapshot writer sent every field of a changed entity in full, even the ones that had not changed. It now marks them as unchanged, as the original does, with the same network format, so every client benefits.
 - **Master servers:**
@@ -147,7 +149,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `logTimestamps` | `0` | 0–1 | `1` starts each console log line with the date and time. |
 | `g_logRotateSize` | `0` | 0–2047 | Size in MB at which `g_log` (`games_mp.log`) is rotated when the next map starts. `0` never rotates it. |
 | `g_logRotate` | `1` | 1–1000 | Older game logs kept when `g_logRotateSize` rotates it, as `<name>.1` (newest) to `<name>.N`. |
-| `sv_plus` | `122` | read-only | `make PLUS=1` build only: the Plus protocol version, so a mod can require this build with `getCvarInt("sv_plus")`. Not sent in serverinfo; other builds do not have it. |
+| `sv_plus` | `123` | read-only | `make PLUS=1` build only: the Plus protocol version, so a mod can require this build with `getCvarInt("sv_plus")`. Not sent in serverinfo; other builds do not have it. |
 | `sv_plusNotice` | empty | text | `make PLUS=1` build only: what a client without CoD2 Plus reads when refused. Empty uses the default, with the link to the client. |
 | `net_altPort` | `0` | 0–65535 | Second UDP port of the 1.0 build, announced as protocol 118 and version 1.3. `0` keeps it closed. Only read at start, so set it on the command line. |
 | `net_strictPort` | `0` | 0–1 | `1` stops the server when `net_port` is busy instead of trying the next 9 ports. Only read at startup, so set it on the command line. |

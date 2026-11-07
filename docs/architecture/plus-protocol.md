@@ -10,7 +10,7 @@ branch.
 | Field | Value |
 |---|---|
 | Name | CoD2 Plus; players read "1.3 Plus" ([ADR 0014](adr/0014-name-1-3-plus.md)) |
-| Plus version | 122 |
+| Plus version | 123 |
 | Base | The 1.3 build, as `make PLUS=1` (`COD2_PLUS`) |
 | State | Third version: milestones 0 and 2 are done, milestone 1 lacks a player on the internet, and milestone 3's format is in and lacks a real match |
 
@@ -52,7 +52,7 @@ list, and no client needs to look at a server before connecting.
    its Plus version, next to the usual `protocol\118`. Stock servers do not
    read it. The key is set for that packet only, not as a user variable.
 2. The server compares it with its own Plus version.
-   - Equal: it answers `connectResponse 122`, and the client slot stores the
+   - Equal: it answers `connectResponse 123`, and the client slot stores the
      version, which chooses the format of that client's snapshots.
    - Anything else, or no key: it refuses the client with the update notice.
 3. The client keeps no state from the answer: each snapshot says its format
@@ -98,6 +98,25 @@ has its own server code, keeps writing `svc_snapshot`.
 
 `src/qcommon/plus_format.h` holds the offset and is vendored; each side has its
 own field code, `MSG_WriteDeltaField` here and `MSG_ReadDeltaField` there.
+
+## Version 123
+
+Version 123 keeps the format and changes how the game plays: rules for bugs
+that zPAM Plus used to fix from GSC, where a script fix fights the client's
+prediction or relies on a client dvar the player can set. They apply only
+between a Plus server and a Plus client: the server passes them to pmove for a
+client whose slot gets Plus snapshots (`pmove_t.plusRules` in
+`ClientThink_real`, `src/game/g_active_mp.cpp`, from
+`plusVersion == PLUS_VERSION`), and the client predicts with them while its
+snapshots are `svc_snapshotPlus`. Bots, other builds and the client against a
+stock server play stock. A mod tells them apart with
+`getCvarInt("sv_plus") >= 123`, and keeps its own fixes below that.
+
+| Rule | Where | zPAM fix it replaces |
+|---|---|---|
+| Fast reload: a weapon switch taken back during the drop raises the weapon again (it went straight back to ready), and a reload that cuts a bolt-action's shot keeps the shot's time left on the reload and its bolt | `PM_Weapon_FinishWeaponChange`, `PM_Weapon_CheckForReload` (`src/bgame/bg_weapons.cpp`) | `_fast_reload.gsc` (`cg_weaponCycleDelay`) |
+
+`scripts/plus_rules_test.py` checks each rule against a minimal Plus client.
 
 ## Where the format changes
 

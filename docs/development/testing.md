@@ -20,13 +20,14 @@ temporary `fs_homepath`.
 | `scripts/smoke_test.py` | Map loads; `getinfo`, `getstatus`, rcon; minimal client connects, gets the gamestate, enters, sends fragmented messages, keeps its address from a guessed qport and after a port change, runs at most 64 commands per message, calls at most three votes, has its menu commands limited and its malformed packets logged at most 10 a second, cannot start chat with 0x14; a challenge pushed out of the table, or under `sv_challengeStateless 1` during a flood, still joins after a fake authorize reply; `getinfo` answers through a `getstatus` burst and takes 50 at once; over-long query challenges and `../` map names refused; a `bulletTrace` into a model before the first frame; master heartbeats; SIGTERM shutdown; log handling | `python3 scripts/smoke_test.py <game>`, `--protocol 118 --binary <1.3 binary>` and `--plus --binary <1.3 Plus binary>` |
 | `scripts/bots_test.py` | Bots mod: graph built, saved and reloaded; paths, sights, grenades, knives; no script errors. `--gametype sd`: roles, active bomb sites, plants; `--gametype ctf`: roles, flag pickups (defuses and captures are only printed) | `python3 scripts/bots_test.py <game> --map mp_carentan` |
 | `scripts/http_test.py` | `httpFetch` and `webSocket*` against local HTTP, HTTPS, WS and WSS servers | `python3 scripts/http_test.py <game>` |
+| `scripts/plus_rules_test.py` | The Plus 123 gameplay rules ([plus-protocol.md](../architecture/plus-protocol.md#version-123)), with a minimal Plus client reading its playerstate: fast reload (no bolt-action shot sooner with a switch taken back); `--only` picks checks. Other builds fail it, as they keep the bugs | `python3 scripts/plus_rules_test.py <game> --binary <1.3 Plus binary>` |
 | `scripts/check_docs.py` | Documentation links, paths, personal data, memory stages | `python3 scripts/check_docs.py` |
 | `scripts/test_check_docs.py` | Unit tests of the checker | `python3 -m unittest discover -s scripts -p 'test_*.py'` |
 
 Helpers: `scripts/cod2client.py` (minimal client: connect, gamestate, enter,
 commands, fragments, `read_frames()` for snapshots and voice) and
 `scripts/cod2snap.py` (parser for gamestate, snapshots and server commands).
-The three server tests take `--binary` to test a build outside `bin/`;
+The server tests take `--binary` to test a build outside `bin/`;
 `bots_test.py` and `http_test.py` also take `--keep <folder>` to keep the
 logs. They pick free ports, so they can run in parallel.
 

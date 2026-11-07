@@ -26,7 +26,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 |---|---|---|
 | `bin/cod2rev_lnxded` (64-bit) | `make` | protocols 115–119 (libcod) |
 | `bin/cod2rev_lnxded` (64-bit) | `make PROTOCOL=118` | protocol 118 |
-| `bin/cod2rev_lnxded` (64-bit, CoD2 1.3 Plus) | `make PLUS=1` | the Plus client (protocol 118 with `plus\\122`) |
+| `bin/cod2rev_lnxded` (64-bit, CoD2 1.3 Plus) | `make PLUS=1` | the Plus client (protocol 118 with `plus\\123`) |
 | `bin/cod2rev_lnxded` (32-bit) | `make ARCH=x86` (with or without `PROTOCOL=118`) | as the 64-bit build of the same version |
 | `bin/cod2rev_lnxded` (aarch64, experimental) | `make ARCH=arm64` on the ARM host | as the 64-bit build of the same version |
 | `bin/cod2rev_win32.exe` | `make windows` / `PROTOCOL=118` | as the Linux build of the same version |
@@ -44,7 +44,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | JSON, HTTP/WebSocket, sounds | Done: yyjson, Mbed TLS 3.6.7 with own HTTP client, Speex 1.2.1 |
 | Bots mod | dm, tdm, sd, ctf, hq; A\* over per-map cached graphs |
 | One game for 1.0 and 1.3 | `net_altPort` (1.0 build): a second port announces 1.3, so one process is listed for both versions; run it without `iw_15.iwd` ([networking.md](../architecture/networking.md)) |
-| CoD2 1.3 Plus | `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)): only the Plus client, Plus version 122, which scripts read from the read-only `sv_plus`; handshake and snapshot offset done, a real match at 40 Hz left ([plus-protocol.md](../architecture/plus-protocol.md#milestones)); needs OpenCoD2-Plus, which cannot be distributed yet |
+| CoD2 1.3 Plus | `make PLUS=1` ([ADR 0015](../architecture/adr/0015-plus-as-a-build-variant.md)): only the Plus client, Plus version 123, which scripts read from the read-only `sv_plus`; handshake, snapshot offset and zPAM's gameplay rules done, a real match at 40 Hz left ([plus-protocol.md](../architecture/plus-protocol.md#milestones)); needs OpenCoD2-Plus, which cannot be distributed yet |
 | arm64 | `make ARCH=arm64`, experimental ([ADR 0013](../architecture/adr/0013-arm64-linux-build.md)): smoke and bots pass on a Raspberry Pi 5; not built by CI |
 | Listen server | `LISTEN_SERVER` builds the server into a client, for the maintainer's client project; off in this repo's builds |
 | Windows build | MinGW, static, threads through a stdcall wrapper |
@@ -60,6 +60,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | Smoke test | `python3 scripts/smoke_test.py <game>` (`--protocol 118` or `--plus`, `--binary <bin>`) |
 | Bots test | `python3 scripts/bots_test.py <game> [--gametype sd\|ctf\|hq]` |
 | HTTP test | `python3 scripts/http_test.py <game>` |
+| Plus rules test | `python3 scripts/plus_rules_test.py <game> --binary <1.3 Plus bin>` |
 | Docs check | `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts -p 'test_*.py'` |
 | Regenerate example cfg | `python3 scripts/gen_server_cfg.py` |
 | Install bots | `python3 scripts/install_bots.py <game> --dest <home>` |
