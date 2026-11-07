@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-07 — Plus 123: zPAM's fixes as rules
+
+- zPAM Plus fixed three bugs from GSC, fighting the client's prediction (`linkto`, `setOrigin` every frame) or relying on a dvar the player can set (`cg_weaponCycleDelay`). The `PLUS=1` build now plays by rules for Plus clients only (`pmove_t.plusRules`, set from the test that picks Plus snapshots): fast reload, prone peek and MG clip, each measured first with a minimal client ([plus-protocol.md](../architecture/plus-protocol.md#version-123)). The Plus client predicts them; bots and other builds stay stock.
+- Rejected for fast reload: holding a deferred reload in `PMF_RELOAD`, because `Player_UpdateActivate` clears that flag on the server every frame and the client never sees it. The rule instead adds the shot's remaining time to the reload. zPAM 2.3.6's step sound on leaving a turret has no playerstate event to remove.
+- Left open: the climbing sound, a matter of data and cgame. Stock weapon files have no `raiseSound`, so the client plays `weap_raise`. On a ladder or mantle the raised weapon is `WP_NONE`, which only the climber hears, with its old weapon. What everyone should hear is zPAM's call.
+
 ## 2026-11-05 — traces before the first frame
 
 - zPAM Plus `re` crashed the server on `mp_toujane_fix` and `mp_burgundy`: its `getPlant` traced into a map's script model during `CodeCallback_StartGameType`, and `g_sv_skel_memory_start` was still NULL because only frames and packets call `SV_ResetSkeletonCache`. Later maps worked, as the pointer stays set; every build was affected, not only Plus.
