@@ -72,6 +72,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 - **CoD2 Plus snapshots:** the `make PLUS=1` build sends the CoD2 Plus client entity times as a short offset, about 12% less traffic at 40 Hz. Plus version 122 needs the matching client.
 - **CoD2 Plus gameplay rules (Plus version 123):** the `make PLUS=1` build fixes bugs that zPAM fixed from script, for Plus clients only, which predict the same ([plus-protocol.md](architecture/plus-protocol.md#version-123)):
   - **Fast reload:** firing a bolt-action or the shotgun, pressing reload and switching weapons twice no longer fires again sooner than the rechamber allows. A switch taken back while the weapon still drops raises it again, and a reload that cuts the shot keeps the shot's time left.
+  - **Prone peek:** going prone while leaning no longer moves the head and hitbox from the side to the middle in one frame. The lean comes back to the prone limit as fast as a lean let go, about 300 ms, while the body goes down.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
 - **20% less traffic to clients:** the snapshot writer sent every field of a changed entity in full, even the ones that had not changed. It now marks them as unchanged, as the original does, with the same network format, so every client benefits.
 - **Master servers:**
