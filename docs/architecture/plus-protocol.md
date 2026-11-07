@@ -118,7 +118,10 @@ stock server play stock. A mod tells them apart with
 | Prone peek: going prone while leaning, the lean comes back to the prone limit (half the crouch one) at the rate of a lean let go; it halved in one frame, so the head and hitbox jumped to the middle faster than the body went down | `PM_UpdateLean` (`src/bgame/bg_pmove.cpp`) | `_prone_peek_fix.gsc` (`linkto` for 0.4 s) |
 | MG clip: leaving a turret keeps the player where using it put them, behind the gun, when a standing box fits there; they went back to where they stood when they took it, so a turret let them peek from behind cover. Not predicted: the server places them | `G_ClientStopUsingTurret` (`src/game/g_misc_mp.cpp`) | `_mg_fix.gsc` (`setOrigin` 40 units behind) |
 
-`scripts/plus_rules_test.py` checks each rule against a minimal Plus client.
+| Climbing sound: going onto a ladder or into a mantle raises no weapon (`EV_RAISE_WEAPON` with weapon 0), which the climber's cgame played with its old weapon (`weap_raise`, as stock weapon files have no `raiseSound`) and others with nothing; the Plus client plays `weap_raise` for it, so everyone hears it. Client only: this server sends the same events | OpenCoD2-Plus's cgame | `_climbing_sound_fix.gsc` |
+
+`scripts/plus_rules_test.py` checks each server rule against a minimal Plus
+client; OpenCoD2-Plus checks the climbing sound with a real client.
 
 ## Where the format changes
 

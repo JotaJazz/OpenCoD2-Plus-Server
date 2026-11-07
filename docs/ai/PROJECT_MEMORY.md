@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-07 — Plus 123: the climbing sound, client side
+
+- The maintainer chose that everyone hears the climbing sound. Only the Plus client changes: it plays `weap_raise` for the raise of weapon 0 that a ladder or a mantle sends. This server sends the same events, so its protocol entry only records the rule.
+- Review follow-ups (1aa8f15): the switch rule is limited to bolt-actions, because pmove's own drops for a ladder, a mantle or `disableWeapon` made every weapon pay a raise; leaving a turret now traces the standing box.
+
 ## 2026-11-07 — Plus 123: zPAM's fixes as rules
 
 - zPAM Plus fixed three bugs from GSC, fighting the client's prediction (`linkto`, `setOrigin` every frame) or relying on a dvar the player can set (`cg_weaponCycleDelay`). The `PLUS=1` build now plays by rules for Plus clients only (`pmove_t.plusRules`, set from the test that picks Plus snapshots): fast reload, prone peek and MG clip, each measured first with a minimal client ([plus-protocol.md](../architecture/plus-protocol.md#version-123)). The Plus client predicts them; bots and other builds stay stock.
