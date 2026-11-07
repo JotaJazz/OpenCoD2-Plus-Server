@@ -114,9 +114,9 @@ stock server play stock. A mod tells them apart with
 
 | Rule | Where | zPAM fix it replaces |
 |---|---|---|
-| Fast reload: a weapon switch taken back during the drop raises the weapon again (it went straight back to ready), and a reload that cuts a bolt-action's shot keeps the shot's time left on the reload and its bolt | `PM_Weapon_FinishWeaponChange`, `PM_Weapon_CheckForReload` (`src/bgame/bg_weapons.cpp`) | `_fast_reload.gsc` (`cg_weaponCycleDelay`) |
+| Fast reload: a bolt-action's weapon switch taken back during the drop raises it again (it went straight back to ready; a drop for a ladder or a mantle that ends before the weapon is down does too), and a reload that cuts a bolt-action's shot keeps the shot's time left on the reload and its bolt | `PM_Weapon_FinishWeaponChange`, `PM_Weapon_CheckForReload` (`src/bgame/bg_weapons.cpp`) | `_fast_reload.gsc` (`cg_weaponCycleDelay`) |
 | Prone peek: going prone while leaning, the lean comes back to the prone limit (half the crouch one) at the rate of a lean let go; it halved in one frame, so the head and hitbox jumped to the middle faster than the body went down | `PM_UpdateLean` (`src/bgame/bg_pmove.cpp`) | `_prone_peek_fix.gsc` (`linkto` for 0.4 s) |
-| MG clip: leaving a turret keeps the player where using it put them, behind the gun, when their box fits there; they went back to where they stood when they took it, so a turret let them peek from behind cover. Not predicted: the server places them | `G_ClientStopUsingTurret` (`src/game/g_misc_mp.cpp`) | `_mg_fix.gsc` (`setOrigin` 40 units behind) |
+| MG clip: leaving a turret keeps the player where using it put them, behind the gun, when a standing box fits there; they went back to where they stood when they took it, so a turret let them peek from behind cover. Not predicted: the server places them | `G_ClientStopUsingTurret` (`src/game/g_misc_mp.cpp`) | `_mg_fix.gsc` (`setOrigin` 40 units behind) |
 
 `scripts/plus_rules_test.py` checks each rule against a minimal Plus client.
 
