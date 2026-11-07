@@ -222,6 +222,7 @@ DESC = {
  'sv_authorizePort':'port of sv_authorizeServer',
  'g_forceRate':'rate given to every client, overriding theirs; 0 = their own',
  'g_forceSnaps':'snapshots per second given to every client; 0 = their own',
+ 'sv_lanForceRate':'0 gives LAN clients the rate and snapshots of internet ones (Plus build)',
  'sv_kickMessages':'tell everyone when a player is kicked',
  'sv_timeoutMessages':'tell everyone when a player times out',
  'sv_botUseTriggerUse':'send bots a "bot_trigger" notify for the use triggers they stand in',

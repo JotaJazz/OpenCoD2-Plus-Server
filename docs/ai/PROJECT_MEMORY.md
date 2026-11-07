@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-07 — the server sets the rate of Plus clients
+
+- The maintainer chose that Plus servers are named by their rate (20, 40, 60 Hz) and that the admin sets it for everyone. `SV_PlusRate` gives each Plus client a snapshot every frame and 1,000 bytes a second per Hz (25,000 at least), unless `g_forceSnaps` or `g_forceRate` say otherwise, read per message: the stock code read them only at connect and on a userinfo change, so an rcon change missed connected players. `sv_maxRate` (max 25000) no longer caps them.
+- Rejected: 30 and 50 Hz (`wait 0.05` becomes 66 ms, or 40/60), and leaving it to each player's `rate` and `snaps`. `sv_lanForceRate 0` (ioquake3's name, Plus only) lets a test on 127.0.0.1 count as an internet client.
+- `plus_rules_test.py --only snapshot_rate --fps N` measures 20, 40 and 62.5 snapshots a second, rates of 25,000, 40,000 and 62,500, and `g_forceSnaps 10` by rcon taking effect at once.
+
 ## 2026-11-07 — turrets and trigger_hurt at any sv_fps
 
 - Toward 40–60 Hz (the maintainer wants aiming and shots to feel smoother; a friend tests over the internet tonight): a manned MG took 50 ms off its shot timer every frame, so it fired twice as fast at 40 Hz and once a frame at 62.5. In `PLUS=1` turrets think every frame and step by `level.frameTime`, the MG carries its time past a shot, and `trigger_hurt` keeps a 50 ms grid. Server only; Plus version 123.

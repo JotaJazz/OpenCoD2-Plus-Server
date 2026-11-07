@@ -211,11 +211,25 @@ back through the archive and does not set the killcam's speed;
 100 and is not a server frame; the archive and the antilag read `sv_fps`.
 `NUM_ARCHIVED_FRAMES` holds 60 s at 20 Hz and 30 s at 40.
 
-A client asks for 30 snapshots a second at most, and the server sends them on
-frame boundaries, so at 40 Hz that is 20 a second. The 40 Hz setting is
-`sv_fps 40`, `g_forceSnaps 40` and `g_forceRate 40000`, with `sv_maxRate` at 0,
-because it stops at 25000. A `rate` of 25000 keeps the average but delays the largest
-messages: at 40 Hz it fits 577 bytes, and 10% of them reach about 770.
+Plus servers are named by their rate, 20, 40 or 60 Hz, and the admin sets it
+for everyone: on a Plus server `sv_fps` alone is the setting. A stock client
+asks for 30 snapshots a second at most and its `rate` stops at 25000, so the
+server sets a Plus client's own (`SV_PlusRate`, `src/server/sv_snapshot_mp.cpp`):
+a snapshot every frame, and 1,000 bytes a second per Hz, but no less than
+25,000 (25,000 at 20 Hz, 40,000 at 40, 62,500 at 62.5). It ignores the
+client's `rate` and `snaps` and `sv_maxRate`, which stops at 25000.
+`g_forceSnaps` and `g_forceRate` still set them by hand. They are read for each
+message, so a change by rcon takes effect at once; the stock code reads them
+when the client connects or changes its userinfo. LAN clients still get every
+frame with no rate unless `sv_lanForceRate` is 0 (ioquake3's name, `PLUS=1`
+only). Server code only: the Plus version stays 123.
+
+30 Hz is left out: a frame of 33 ms makes `wait 0.05` two frames, 66 ms, so
+scripts that loop on it would run 32% slower. 50 Hz rounds it to 40 or 60 ms.
+
+Before `SV_PlusRate`, 40 Hz took `g_forceSnaps 40` and `g_forceRate 40000`
+with `sv_maxRate` at 0. A `rate` of 25000 keeps the average but delays the
+largest messages: at 40 Hz it fits 577 bytes, and 10% of them reach about 770.
 
 Measured with the LAN exemption of `SV_SendMessageToClient` removed, as a client
 on the internet sees it, with 20 clients and 20 bots:

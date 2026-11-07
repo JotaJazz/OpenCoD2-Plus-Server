@@ -75,6 +75,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
   - **Prone peek:** going prone while leaning no longer moves the head and hitbox from the side to the middle in one frame. The lean comes back to the prone limit as fast as a lean let go, about 300 ms, while the body goes down.
   - **Climbing sound:** nothing changes here; the Plus client plays the weapon raise that a ladder or a mantle sends with no weapon, so every player hears what the climber hears.
   - **MG clip:** leaving a turret keeps the player behind the gun, where using it put them, instead of taking them back to where they stood when they took it, so a turret can no longer be used to peek from behind cover.
+- **The server sets the rate at 20, 40 and 60 Hz (`make PLUS=1`):** a Plus server is named by its rate and `sv_fps` alone sets it. Every Plus client gets a snapshot every frame and 1,000 bytes a second per Hz (25,000 at least), whatever its `rate` and `snaps`, which stop at 25000 and 30. `g_forceSnaps` and `g_forceRate` still set them, and a change by rcon now takes effect at once instead of when the player reconnects. 30 and 50 Hz are left out, as they stretch a script's `wait 0.05`.
 - **Turrets and `trigger_hurt` at any `sv_fps` (`make PLUS=1`):** a manned MG took 50 ms off its time between shots every server frame, so above 20 Hz it fired faster: twice at 40 Hz, once a frame at 60. It now fires at its weapon's rate at any frame rate, an unmanned turret turns back at the same speed, and a `trigger_hurt` hurts every 50 ms (or second) at 50 and 60 Hz too. Nothing changes at 20 Hz or in other builds.
 - **Fixed shotgun pellet spread (from CoD2x, same name):** with `g_shotgun_spread_fix 1` the shotgun's 8 pellets follow one of CoD2x's two fixed patterns, turned at random per shot, so the same shot no longer kills or misses by chance; zPAM 4.x tunes its shotgun ranges for it. The server traces the pellets and sends their impacts, so every client, stock or Plus, sees them where they hit. Off by default.
 - **`wait` follows `sv_fps`:** scripts keep their timing in seconds at any server frame rate, instead of running faster with it.
@@ -161,8 +162,9 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `sv_logRcon` | `1` | 0–1 | `0` leaves accepted rcon commands out of the log. Wrong passwords are always logged. |
 | `sv_authorizeServer` | `cod2master.activision.com` | — | CD key authorization server. A new value is used from the next connection. |
 | `sv_authorizePort` | `20700` | 1–65535 | Port of the authorization server. |
-| `g_forceRate` | `0` | 0–1000000 | Rate given to every client instead of its own (minimum 1000). `0` keeps the client's. |
-| `g_forceSnaps` | `0` | 0–1000 | Snapshots per second given to every client. `0` keeps the client's. |
+| `g_forceRate` | `0` | 0–1000000 | Rate given to every client instead of its own (minimum 1000). `0` keeps the client's; on a Plus server, `0` is 1,000 bytes a second per Hz (25,000 at least). |
+| `g_forceSnaps` | `0` | 0–1000 | Snapshots per second given to every client. `0` keeps the client's; on a Plus server, `0` is a snapshot every frame. |
+| `sv_lanForceRate` | `1` | 0–1 | `0` gives LAN clients the rate and snapshots of internet ones, instead of every frame with no rate limit. Plus build only. |
 | `sv_kickMessages` | `1` | 0–1 | `0` hides the message that tells everyone a player was kicked. |
 | `sv_timeoutMessages` | `1` | 0–1 | `0` hides the message that tells everyone a player timed out. |
 | `sv_botUseTriggerUse` | `0` | 0–1 | `1` sends a bot a `bot_trigger` notify, with the trigger, while it stands in a use trigger it could use. |
