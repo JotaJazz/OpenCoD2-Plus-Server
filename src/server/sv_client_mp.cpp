@@ -2550,7 +2550,13 @@ static void SV_WWWDownload_f( client_t *cl )
 	}
 
 	// below for messages that only happen during/after download
+#ifdef COD2_PLUS
+	// a client that refuses the redirect URL sends fail without an ack (the Plus 123
+	// client refuses plus:); fall back to the UDP download rather than drop it
+	if ( !cl->clientDownloadingWWW && Q_stricmp( subcmd, "fail" ) && Q_stricmp( subcmd, "chkfail" ) )
+#else
 	if ( !cl->clientDownloadingWWW )
+#endif
 	{
 		Com_Printf("SV_WWWDownload: unexpected wwwdl '%s' for client '%s'\n", subcmd, cl->name);
 		SV_DropClient(cl, "PC_PATCH_1_1_UNEXPECTEDDOWLOADMESSAGE");
