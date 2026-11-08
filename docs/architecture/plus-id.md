@@ -104,9 +104,9 @@ slot is connected. The seen file has one line per ID, `id first_seen seconds`
 (decimal integers, `first_seen` a Unix time). It is saved every 60 s, when a
 player drops, at the end of the map and at shutdown. A save re-reads the file,
 keeps the smallest `first_seen` and adds only the seconds this server counted
-since its last save, then writes `<file>.tmp` and renames it over the file. So
+since its last save, then writes `<file>.tmp.<pid>` and renames it over the file. So
 several servers can share one file (an absolute `sv_plusIdSeenFile`) and keep
-each other's time; two saving in the same instant can lose one interval. A file
+each other's time; two saving in the same instant can lose one interval. Time that cannot be written stays pending and the next save retries it. A file
 that exists but cannot be read is never overwritten: the server logs
 `plusid: cannot read <file>, playtime not saved`. The server never refuses or
 treats a player differently for how old an ID is.

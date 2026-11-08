@@ -182,11 +182,28 @@ static bool PlusId_ReadSeen(const char *path, std::vector<PlusId_Seen> &list)
 	return ok;
 }
 
+// the time of dropped players that a save has not written yet: kept until one does
+static std::vector<PlusId_Seen> pending;
+
+static PlusId_Seen *PlusId_Find(std::vector<PlusId_Seen> &list, const char *id, long long first)
+{
+	for ( size_t k = 0; k < list.size(); k++ )
+	{
+		if ( !strcmp(list[k].id, id) )
+			return &list[k];
+	}
+
+	PlusId_Seen e = { "", first, 0 };
+	strcpy(e.id, id);
+	list.push_back(e);
+	return &list.back();
+}
+
 static void PlusId_Save()
 {
 	std::vector<PlusId_Seen> list;
-	char path[MAX_OSPATH * 2], tmp[MAX_OSPATH * 2 + 8];
-	bool any = false;
+	char path[MAX_OSPATH * 2], tmp[MAX_OSPATH * 2 + 24];
+	bool any = !pending.empty();
 
 	lastSave = time(NULL);
 	for ( int i = 0; i < MAX_CLIENTS; i++ )
@@ -201,29 +218,26 @@ static void PlusId_Save()
 		return;
 	}
 
+	// the file is only changed in memory here; the slots are marked saved after the rename
+	for ( size_t k = 0; k < pending.size(); k++ )
+	{
+		PlusId_Seen *e = PlusId_Find(list, pending[k].id, pending[k].first);
+		e->first = e->first < pending[k].first ? e->first : pending[k].first;
+		e->seconds += pending[k].seconds;
+	}
 	for ( int i = 0; i < MAX_CLIENTS; i++ )
 	{
 		if ( !plusIds[i][0] || slots[i].unsaved <= 0 )
 			continue;
 
-		size_t k = 0;
-		while ( k < list.size() && strcmp(list[k].id, plusIds[i]) )
-			k++;
-		if ( k == list.size() )
-		{
-			PlusId_Seen e = { "", slots[i].first, 0 };
-			strcpy(e.id, plusIds[i]);
-			list.push_back(e);
-		}
-		list[k].first = list[k].first < slots[i].first ? list[k].first : slots[i].first;
-		list[k].seconds += slots[i].unsaved;
-		slots[i].first = list[k].first;
-		slots[i].stored = list[k].seconds;
-		slots[i].unsaved = 0;
+		PlusId_Seen *e = PlusId_Find(list, plusIds[i], slots[i].first);
+		e->first = e->first < slots[i].first ? e->first : slots[i].first;
+		e->seconds += slots[i].unsaved;
 	}
 
+	// a name of its own: servers sharing the file never write the same temporary file
 	// shortcut: two servers saving in the same instant can lose one interval; add a lock if groups report it
-	Com_sprintf(tmp, sizeof(tmp), "%s.tmp", path);
+	Com_sprintf(tmp, sizeof(tmp), "%s.tmp.%d", path, (int)getpid());
 	FILE *f = fopen(tmp, "w");
 	bool ok = f != NULL;
 	for ( size_t k = 0; ok && k < list.size(); k++ )
@@ -235,7 +249,22 @@ static void PlusId_Save()
 	ok = ok && rename(tmp, path) == 0;
 #endif
 	if ( !ok )
+	{
 		Com_Printf("plusid: cannot write %s, playtime not saved\n", path);
+		return;
+	}
+
+	pending.clear();
+	for ( int i = 0; i < MAX_CLIENTS; i++ )
+	{
+		if ( !plusIds[i][0] || slots[i].unsaved <= 0 )
+			continue;
+
+		PlusId_Seen *e = PlusId_Find(list, plusIds[i], 0);
+		slots[i].first = e->first;
+		slots[i].stored = e->seconds;
+		slots[i].unsaved = 0;
+	}
 }
 
 // adds the seconds that passed to every connected player with an ID; a
@@ -297,6 +326,11 @@ void PlusId_ClientDropped(int clientNum)
 	if ( plusIds[clientNum][0] )
 	{
 		PlusId_Tick();
+		if ( slots[clientNum].unsaved > 0 )
+		{
+			PlusId_Seen *e = PlusId_Find(pending, plusIds[clientNum], slots[clientNum].first);
+			e->seconds += slots[clientNum].unsaved;
+		}
 		PlusId_Save();
 	}
 	plusIds[clientNum][0] = '\0';

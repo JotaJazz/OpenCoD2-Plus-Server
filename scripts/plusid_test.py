@@ -188,12 +188,26 @@ def check_shared_seen_file(args, check):
                 client, reply = connect_with_id(port, priv, None, 'shared', args.protocol)
                 clients.append(client)
             time.sleep(5)
-            for port in ports:
-                smoke_test.rcon(port, RCON, 'kick shared')
+            # one second apart: simultaneous saves are the documented shortcut
+            smoke_test.rcon(ports[0], RCON, 'kick shared')
+            time.sleep(1)
+            smoke_test.rcon(ports[1], RCON, 'kick shared')
             want = plus_id(public_key(priv))
-            smoke_test.wait_for(lambda: seen_file(seen).get(want, (0, 0))[1] >= 8, 10)
+            smoke_test.wait_for(lambda: seen_file(seen).get(want, (0, 0))[1] >= 9, 10)
             row = seen_file(seen).get(want)
             check('shared_seen_file', row is not None and row[1] >= 8, str(row))
+
+            # the shutdown save: a player still connected when the server quits
+            priv2 = make_key()
+            client, _ = connect_with_id(ports[0], priv2, None, 'quitter', args.protocol)
+            clients.append(client)
+            time.sleep(3)
+            smoke_test.rcon(ports[0], RCON, 'quit')
+            want2 = plus_id(public_key(priv2))
+            smoke_test.wait_for(lambda: seen_file(seen).get(want2, (0, 0))[1] >= 2, 15)
+            check('shutdown_save', seen_file(seen).get(want2, (0, 0))[1] >= 2, str(seen_file(seen)))
+            leftovers = [f for f in os.listdir(shared) if f != 'seen.txt']
+            check('no_tmp_left', not leftovers, str(leftovers))
         finally:
             for client in clients:
                 client.close()
