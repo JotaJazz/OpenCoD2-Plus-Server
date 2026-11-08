@@ -140,8 +140,9 @@ Server, as built (`src/server/sv_www_plus.cpp`):
   `fail` (the stock server drops a client for it) and falls back to UDP.
 - Before the redirect the server records a grant for the client's IP and the
   file. A request may start for 5 minutes after the redirect, and a new
-  redirect renews it. A started transfer finishes unless no bytes move for
-  30 s. The grant is by IP, not by client slot, as `sv_wwwDlDisconnected`
+  redirect renews it. A started transfer finishes unless it moves under
+  1 MB in 30 s (half its share of a lower `sv_wwwMaxRate`), and is then
+  reset, so the kernel stops sending what a stalled reader never takes. The grant is by IP, not by client slot, as `sv_wwwDlDisconnected`
   makes the client leave before its request arrives.
 - A connection from an IP with no live grant is closed at accept; a request
   with no grant for that IP and exact name is `404`. Only `GET` and

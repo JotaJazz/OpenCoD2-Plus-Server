@@ -13,6 +13,7 @@ import cod2client, smoke_test
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RCON = 'wwwplus_rcon'
 MOD = 'main/zz_www_plus.iwd'
+BIG = 'main/zz_www_big.iwd'
 REFUSED = b'EXE_CANTAUTODLGAMEIWD'
 
 
@@ -244,6 +245,38 @@ def check_http(port, sid, data, check):
     check('map change new get', len(red) == 1 and status == 200 and body == data, f'{red} {status}')
 
 
+def check_trickle(port, sid, check):
+    """A granted reader that takes 4 KB a second is reset once 30 s pass with
+    under 1 MB moved. The file is larger than the socket buffers, which
+    would otherwise take it all and end the transfer."""
+    reply, red = ask(port, sid, BIG)
+    size = red[0]['size'] if red else 0
+    s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+    s.connect(('127.0.0.1', port))
+    s.sendall(f'GET /{BIG} HTTP/1.1\r\nHost: x\r\n\r\n'.encode())
+    s.settimeout(1)
+    got, start = 0, time.monotonic()
+    try:
+        while time.monotonic() - start < 45:
+            got += len(s.recv(4096))
+            time.sleep(1)
+        # the bytes queued before a reset still arrive first: read them fast
+        s.settimeout(5)
+        while True:
+            chunk = s.recv(65536)
+            if not chunk:
+                break
+            got += len(chunk)
+        closed = True
+    except socket.timeout:
+        closed = False
+    except OSError:
+        closed = True
+    s.close()
+    check('trickle reader', closed and 0 < got < size // 2, f'{got} of {size} bytes')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('game_dir')
@@ -262,6 +295,8 @@ def main():
         os.makedirs(os.path.join(home, 'main'))
         with zipfile.ZipFile(os.path.join(home, MOD), 'w', zipfile.ZIP_STORED) as z:
             z.writestr('www/blob.bin', secrets.token_bytes(1 << 20))
+        with zipfile.ZipFile(os.path.join(home, BIG), 'w', zipfile.ZIP_STORED) as z:
+            z.writestr('www/big.bin', secrets.token_bytes(16 << 20))
         with zipfile.ZipFile(os.path.join(home, 'main', 'zz_svr_www.iwd'), 'w') as z:
             z.writestr('www/svr.txt', 'server only\n')
         size = os.path.getsize(os.path.join(home, MOD))
@@ -297,6 +332,7 @@ def main():
                 check('disconnected flag', [r['flags'] for r in red] == [1], str(red))
                 smoke_test.rcon(port, RCON, 'set sv_wwwDlDisconnected 0')
                 check_http(port, sid, data, check)
+                check_trickle(port, server_id(port), check)
             check('the server still runs', server.poll() is None, f'exit code {server.poll()}')
             if up:
                 logged = re.findall(r'www: 127\.0\.0\.1 main/zz_www_plus\.iwd \d+ bytes in [\d.]+ s', open(log_path, encoding='latin-1').read())

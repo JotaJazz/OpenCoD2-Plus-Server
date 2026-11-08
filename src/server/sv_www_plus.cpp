@@ -153,7 +153,8 @@ its IP, under its exact name. It never calls FS_*, Dvar_* or Com_Printf.
 #define WWW_CONNS 64 // the most sv_wwwMaxConnections allows
 #define WWW_HEAD_MAX 4096
 #define WWW_HEAD_MS 10000 // the request head must arrive within this of the accept
-#define WWW_STALL_MS 30000 // a transfer with no bytes moving for this is closed
+#define WWW_STALL_MS 30000 // a transfer that moves too few bytes in this is closed
+#define WWW_STALL_BYTES (1 << 20) // too few: a slow reader would hold a connection for ever
 #define WWW_SLICE_MS 100
 #define WWW_BURST_MS 10 // the most tokens saved: a home uplink queues bigger bursts ahead of the game
 #define WWW_CHUNK 65536
@@ -164,7 +165,8 @@ typedef struct
 	int fd; // -1 free
 	uint32_t ip;
 	int accepted;
-	int moved; // last time bytes moved
+	int moved; // last time WwwPlus_StallBytes moved
+	int checkpoint; // bytes sent (head and body) at that time
 	int headLen;
 	char head[WWW_HEAD_MAX + 1];
 	char reply[256]; // the response head, sent before the body
@@ -203,10 +205,17 @@ static void WwwPlus_Log(const wwwConn_t *c, int now)
 	pthread_mutex_unlock(&www_mutex);
 }
 
-static void WwwPlus_Close(wwwConn_t *c)
+// abort resets the connection: a plain close would leave the kernel sending
+// what a stalled reader never takes, after the slot is free
+static void WwwPlus_Close(wwwConn_t *c, bool abort = false)
 {
 	if (c->file)
 		fclose(c->file);
+	if (abort)
+	{
+		struct linger reset = { 1, 0 };
+		setsockopt(c->fd, SOL_SOCKET, SO_LINGER, &reset, sizeof(reset));
+	}
 	close(c->fd);
 	c->fd = -1;
 	c->file = NULL;
@@ -378,6 +387,28 @@ static bool WwwPlus_ReadHead(wwwConn_t *c, int now)
 	return c->headLen < WWW_HEAD_MAX;
 }
 
+// The bytes a transfer must move every WWW_STALL_MS: WWW_STALL_BYTES, or half
+// its share of a cap too low for that
+static int WwwPlus_StallBytes(void)
+{
+	int rate = www_maxRate.load();
+	int conns = www_maxConns.load();
+	long share = (long)rate * 1024 * (WWW_STALL_MS / 1000) / (conns > 0 ? conns : 1) / 2;
+
+	return rate && share < WWW_STALL_BYTES ? (int)share : WWW_STALL_BYTES;
+}
+
+static void WwwPlus_Moved(wwwConn_t *c, int now)
+{
+	int total = c->replySent + c->sent;
+
+	if (total - c->checkpoint >= WwwPlus_StallBytes())
+	{
+		c->checkpoint = total;
+		c->moved = now;
+	}
+}
+
 // Sends the response head, then up to budget body bytes; true while open
 static bool WwwPlus_Send(wwwConn_t *c, int now, int *budget)
 {
@@ -387,7 +418,7 @@ static bool WwwPlus_Send(wwwConn_t *c, int now, int *budget)
 		if (put < 0)
 			return errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR;
 		c->replySent += put;
-		c->moved = now;
+		WwwPlus_Moved(c, now);
 		if (c->replySent < c->replyLen)
 			return true;
 	}
@@ -408,7 +439,7 @@ static bool WwwPlus_Send(wwwConn_t *c, int now, int *budget)
 			return errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR;
 		c->sent += put;
 		*budget -= put;
-		c->moved = now;
+		WwwPlus_Moved(c, now);
 	}
 	if (c->sent < c->size)
 		return true;
@@ -488,12 +519,10 @@ static void *WwwPlus_Worker(void *)
 			else if (fds[j].revents & POLLOUT)
 				open = WwwPlus_Send(c, now, &budget);
 
-			if (open && !c->replyLen && now - c->accepted >= WWW_HEAD_MS)
-				open = false;
-			if (open && now - c->moved >= WWW_STALL_MS)
-				open = false;
-			if (!open)
-				WwwPlus_Close(c);
+			bool late = open && ((!c->replyLen && now - c->accepted >= WWW_HEAD_MS) || now - c->moved >= WWW_STALL_MS);
+
+			if (!open || late)
+				WwwPlus_Close(c, late);
 		}
 		if (rate)
 			tokens -= (int)tokens - budget;
