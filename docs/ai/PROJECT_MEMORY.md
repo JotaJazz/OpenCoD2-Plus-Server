@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — upstream sync: weapon fx length
+
+- Merged voron00 to `7005b0b`: `8cb9370` reads `life` and `delay` from a weapon's `projExplosionEffect` file and keeps the exploded missile until then, as the original binary does with `FX_GetEffectLength`; it replaces the hack of 60 s for smoke and 50 ms for the rest. The stock smoke files say `life 6e+004`, so stock play keeps its 60 s; only smoke grenades have the effect on stock.
+- `68df567` reorders `BG_SetNewAnimation`, `BG_RunLerpFrameRate` and `PM_IsAdsAllowed` with the same results; the conflict kept the fork's `* 0.0076923077f` (1.3 multiplies by 1/130).
+- Left out: `7005b0b`, the math moved inline into `com_math.h`, which builds on the math refactors left out on 2026-10-29. Checked with the five builds and the smoke test.
+
 ## 2026-11-07 — the antilag rewinds the pose
 
 - The antilag moved only origins, so the hitboxes kept the present lean, yaw, aim and stance flags. In `PLUS=1`, `G_PlusRecordPose` keeps each player's pose per frame (128 frames) and the antilag sets it with the origin, resetting the skeleton cache. The controllers' own state is kept, since they lerp toward their angles as the client draws them; rebuilding from the archived playerstate would give the settled pose, wrong in exactly the fast moves.
