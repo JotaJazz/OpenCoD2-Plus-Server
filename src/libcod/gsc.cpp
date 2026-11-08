@@ -531,6 +531,8 @@ scr_method_t scriptMethods[] =
 	{"processsuicide", gsc_player_processsuicide, 0},
 	{"getuserinfo", gsc_player_getuserinfo, 0},
 	{"getplusid", gsc_player_getplusid, 0},
+	{"getplusidplaytime", gsc_player_getplusidplaytime, 0},
+	{"getplusidfirstseen", gsc_player_getplusidfirstseen, 0},
 	{"setuserinfo", gsc_player_set_userinfo, 0},
 	{"muteclient", gsc_player_muteclient, 0},
 	{"unmuteclient", gsc_player_unmuteclient, 0},

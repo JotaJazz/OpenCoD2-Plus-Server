@@ -8,7 +8,7 @@ and the server's verdict is read back with rcon plusIdStatus. The folder must
 hold only the stock iwds. Exits with 0 when every check passes. The helpers
 (make_key, sign, connect_with_id...) are for the other Plus ID tests.
 """
-import argparse, base64, hashlib, os, re, secrets, subprocess, sys, tempfile, zipfile
+import argparse, base64, hashlib, os, re, secrets, subprocess, sys, tempfile, time, zipfile
 
 import cod2client, smoke_test
 
@@ -27,6 +27,7 @@ GAMETYPE = r"""main()
 connected()
 {
 	logPrint("plusid " + self getPlusId() + "\n");
+	logPrint("plusidtime " + self getPlusIdPlaytime() + " " + self getPlusIdFirstSeen() + "\n");
 	self [[level.plusidConnect]]();
 }
 """
@@ -119,10 +120,85 @@ def connect_with_id(port, priv, adr=None, name='plusid', protocol=115, plus=123)
     return client, reply
 
 
-def status(port):
-    """{name: id} from rcon plusIdStatus, whose lines are "num name id"."""
+def status_rows(port):
+    """{name: (id, playtime, first_seen_ago)} from rcon plusIdStatus, whose lines are
+    "num name id playtime first_seen_ago"."""
     lines = smoke_test.rcon(port, RCON, 'plusIdStatus').splitlines()
-    return {m.group(1): m.group(2) for m in (re.match(r'\s*\d+ (.*) (\S+)$', l) for l in lines[1:]) if m}
+    rows = (re.match(r'\s*\d+ (.*) (\S+) (\d+) (\d+)$', l) for l in lines[1:])
+    return {m.group(1): (m.group(2), int(m.group(3)), int(m.group(4))) for m in rows if m}
+
+
+def status(port):
+    """{name: id} from rcon plusIdStatus."""
+    return {name: row[0] for name, row in status_rows(port).items()}
+
+
+def seen_file(path):
+    """{id: (first_seen, seconds)} of a seen file."""
+    if not os.path.exists(path):
+        return {}
+    return {f[0]: (int(f[1]), int(f[2])) for f in (l.split() for l in open(path).read().splitlines())}
+
+
+def launch(binary, game_dir, home, port, map_name, log_path, extra=()):
+    """Starts a dedicated server with the test gametype; returns the process."""
+    command = [os.path.abspath(binary), '+set', 'fs_basepath', os.path.abspath(game_dir),
+               '+set', 'fs_homepath', home, '+set', 'net_port', str(port), '+set', 'sv_cracked', '1',
+               '+set', 'rcon_password', RCON, '+set', 'dedicated', '1', '+set', 'sv_maxclients', '16',
+               '+set', 'g_gametype', 'plusid', '+set', 'g_log', 'games_mp.log', '+set', 'g_logSync', '1',
+               *extra, '+map', map_name]
+    with open(log_path, 'wb') as log:
+        return subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, cwd=home)
+
+
+def make_home(home):
+    os.makedirs(os.path.join(home, 'main'))
+    with zipfile.ZipFile(os.path.join(home, 'main', 'zz_svr_plusid.iwd'), 'w') as z:
+        z.writestr('maps/mp/gametypes/plusid.gsc', GAMETYPE)
+
+
+def stop(server):
+    if server.poll() is None:
+        server.terminate()
+        try:
+            server.wait(timeout=15)
+        except subprocess.TimeoutExpired:
+            server.kill()
+
+
+def check_shared_seen_file(args, check):
+    """Two servers with one seen file and the same ID connected 5 s to each."""
+    with tempfile.TemporaryDirectory(prefix='cod2_plusid_a_') as a, tempfile.TemporaryDirectory(prefix='cod2_plusid_b_') as b, \
+            tempfile.TemporaryDirectory(prefix='cod2_plusid_seen_') as shared:
+        seen = os.path.join(shared, 'seen.txt')
+        servers, clients = [], []
+        try:
+            ports = [smoke_test.free_port(), smoke_test.free_port()]
+            for home, port in zip((a, b), ports):
+                make_home(home)
+                servers.append(launch(args.binary, args.game_dir, home, port, args.map, os.path.join(home, 'out.log'),
+                                      ['+set', 'sv_plusIdSeenFile', seen]))
+            up = all(smoke_test.wait_for(lambda p=p, s=s: s.poll() is not None or smoke_test.query(p, 'getinfo x'), 150)
+                     and s.poll() is None for p, s in zip(ports, servers))
+            check('shared servers run', up)
+            if not up:
+                return
+            priv = make_key()
+            for port in ports:
+                client, reply = connect_with_id(port, priv, None, 'shared', args.protocol)
+                clients.append(client)
+            time.sleep(5)
+            for port in ports:
+                smoke_test.rcon(port, RCON, 'kick shared')
+            want = plus_id(public_key(priv))
+            smoke_test.wait_for(lambda: seen_file(seen).get(want, (0, 0))[1] >= 8, 10)
+            row = seen_file(seen).get(want)
+            check('shared_seen_file', row is not None and row[1] >= 8, str(row))
+        finally:
+            for client in clients:
+                client.close()
+            for server in servers:
+                stop(server)
 
 
 def check_address_rule(check):
@@ -144,7 +220,7 @@ def check_address_rule(check):
     check('address_rule', not bad, str(bad))
 
 
-def run_cases(port, protocol, log_path, game_log, check):
+def run_cases(port, protocol, log_path, game_log, seen_path, check):
     clients = []
 
     def join(name, priv=None, adr=None, extra=None):
@@ -167,6 +243,23 @@ def run_cases(port, protocol, log_path, game_log, check):
 
         reply = join('noid')
         check('no_id', reply is None and status(port).get('noid') == '-', f'{reply} {status(port)}')
+        check('no_id_playtime', status_rows(port)['noid'][1:] == (0, 0)
+              and smoke_test.wait_for(lambda: 'plusidtime 0 0' in smoke_test.log_lines(game_log)), str(status_rows(port)))
+
+        # a player kept 5 s is counted, saved at the drop, and keeps first_seen when back
+        time.sleep(5)
+        row = status_rows(port)['valid']
+        check('playtime', row[1] >= 4, str(row))
+        smoke_test.rcon(port, RCON, 'kick valid')
+        smoke_test.wait_for(lambda: want in seen_file(seen_path), 5)
+        first, seconds = seen_file(seen_path).get(want, (0, 0))
+        check('playtime_saved', seconds >= 4 and first > 0, str(seen_file(seen_path)))
+        time.sleep(2)
+        join('valid', priv)
+        row = status_rows(port).get('valid', ('', 0, 0))
+        check('first_seen', row[1] >= 4 and row[2] >= 2 and seen_file(seen_path).get(want, (0,))[0] == first, f'{row} {first}')
+        check('getplusidplaytime', smoke_test.wait_for(lambda: any(
+            re.match(r'plusidtime ([4-9]|\d\d+) ([2-9]|\d\d+)$', l) for l in smoke_test.log_lines(game_log))))
 
         def tampered(challenge):
             adr = f'127.0.0.1:{port}'
@@ -224,17 +317,9 @@ def main():
 
     check_address_rule(check)
     with tempfile.TemporaryDirectory(prefix='cod2_plusid_') as home:
-        os.makedirs(os.path.join(home, 'main'))
-        with zipfile.ZipFile(os.path.join(home, 'main', 'zz_svr_plusid.iwd'), 'w') as z:
-            z.writestr('maps/mp/gametypes/plusid.gsc', GAMETYPE)
-        command = [os.path.abspath(args.binary), '+set', 'fs_basepath', os.path.abspath(args.game_dir),
-                   '+set', 'fs_homepath', home, '+set', 'net_port', str(port), '+set', 'sv_cracked', '1',
-                   '+set', 'rcon_password', RCON, '+set', 'dedicated', '1', '+set', 'sv_maxclients', '16',
-                   '+set', 'g_gametype', 'plusid', '+set', 'g_log', 'games_mp.log', '+set', 'g_logSync', '1',
-                   '+map', args.map]
+        make_home(home)
         log_path = os.path.join(home, 'out.log')
-        with open(log_path, 'wb') as log:
-            server = subprocess.Popen(command, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, cwd=home)
+        server = launch(args.binary, args.game_dir, home, port, args.map, log_path)
         try:
             smoke_test.wait_for(lambda: server.poll() is not None or smoke_test.query(port, 'getinfo x'), 150)
             up = server.poll() is None and smoke_test.query(port, 'getinfo x') is not None
@@ -242,18 +327,15 @@ def main():
             if up:
                 check('lan warning', 'plusid: no sv_publicAddress, only LAN players get a Plus ID'
                       in open(log_path, encoding='latin-1').read())
-                run_cases(port, args.protocol, log_path, os.path.join(home, 'main', 'games_mp.log'), check)
+                run_cases(port, args.protocol, log_path, os.path.join(home, 'main', 'games_mp.log'),
+                          os.path.join(home, 'plusid_seen.txt'), check)
             check('the server still runs', server.poll() is None, f'exit code {server.poll()}')
         finally:
-            if server.poll() is None:
-                server.terminate()
-                try:
-                    server.wait(timeout=15)
-                except subprocess.TimeoutExpired:
-                    server.kill()
+            stop(server)
         if failures:
             print('\n--- last lines of the server log ---')
             print(open(log_path, encoding='latin-1').read()[-3000:])
+    check_shared_seen_file(args, check)
     print('\n' + ('FAILED: ' + ', '.join(failures) if failures else 'All checks passed'))
     return 1 if failures else 0
 

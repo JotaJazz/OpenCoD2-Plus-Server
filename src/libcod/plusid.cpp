@@ -1,6 +1,12 @@
 #include "gsc.hpp"
 #include "plusid.hpp"
 
+#include <errno.h>
+#include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef LIBCOD
 
 // The Plus ID check at connect (docs/architecture/plus-id.md): the key
@@ -12,7 +18,22 @@
 static dvar_t *sv_publicAddress;
 static dvar_t *sv_requirePlusId;
 static dvar_t *sv_plusIdNotice;
+static dvar_t *sv_plusIdSeenFile;
 static char plusIds[MAX_CLIENTS][22];
+
+// Playtime per ID (docs/architecture/plus-id.md): the file has one line per
+// ID, "id first_seen seconds". A slot keeps what the file said when its player
+// connected (seen, stored) and the seconds only this server counted since
+// (unsaved); a save adds only those to whatever the file holds then, so two
+// servers sharing the file do not lose each other's time.
+struct PlusId_Seen
+{
+	char id[22];
+	long long first, seconds;
+};
+
+static struct { long long first, stored, unsaved; } slots[MAX_CLIENTS];
+static time_t lastTick, lastSave;
 
 // A dvar's address, resolved only when its text changes: a host name would
 // block the frame on every connect. False when the dvar is empty, not an
@@ -123,14 +144,173 @@ const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, ch
 	return NULL;
 }
 
+static void PlusId_SeenPath(char *path, size_t size)
+{
+	const char *name = sv_plusIdSeenFile->current.string, *home = Dvar_FindVar("fs_homepath") ? Dvar_FindVar("fs_homepath")->current.string : "";
+
+	if ( name[0] == '/' || name[0] == '\\' || name[1] == ':' || !*home )
+		Q_strncpyz(path, name, size);
+	else
+		Com_sprintf(path, size, "%s/%s", home, name);
+}
+
+// False when the file exists and cannot be read whole: it is then never
+// overwritten. A missing file is an empty list.
+static bool PlusId_ReadSeen(const char *path, std::vector<PlusId_Seen> &list)
+{
+	FILE *f = fopen(path, "r");
+	PlusId_Seen e;
+	char id[64];
+	long long first, seconds;
+	int n;
+
+	if ( !f )
+		return errno == ENOENT;
+
+	while ( ( n = fscanf(f, "%63s %lld %lld", id, &first, &seconds) ) == 3 )
+	{
+		if ( strlen(id) >= sizeof(e.id) )
+			break;
+		strcpy(e.id, id);
+		e.first = first;
+		e.seconds = seconds;
+		list.push_back(e);
+	}
+
+	bool ok = n == EOF && !ferror(f);
+	fclose(f);
+	return ok;
+}
+
+static void PlusId_Save()
+{
+	std::vector<PlusId_Seen> list;
+	char path[MAX_OSPATH * 2], tmp[MAX_OSPATH * 2 + 8];
+	bool any = false;
+
+	lastSave = time(NULL);
+	for ( int i = 0; i < MAX_CLIENTS; i++ )
+		any = any || ( plusIds[i][0] && slots[i].unsaved > 0 );
+	if ( !any )
+		return;
+
+	PlusId_SeenPath(path, sizeof(path));
+	if ( !PlusId_ReadSeen(path, list) )
+	{
+		Com_Printf("plusid: cannot read %s, playtime not saved\n", path);
+		return;
+	}
+
+	for ( int i = 0; i < MAX_CLIENTS; i++ )
+	{
+		if ( !plusIds[i][0] || slots[i].unsaved <= 0 )
+			continue;
+
+		size_t k = 0;
+		while ( k < list.size() && strcmp(list[k].id, plusIds[i]) )
+			k++;
+		if ( k == list.size() )
+		{
+			PlusId_Seen e = { "", slots[i].first, 0 };
+			strcpy(e.id, plusIds[i]);
+			list.push_back(e);
+		}
+		list[k].first = list[k].first < slots[i].first ? list[k].first : slots[i].first;
+		list[k].seconds += slots[i].unsaved;
+		slots[i].first = list[k].first;
+		slots[i].stored = list[k].seconds;
+		slots[i].unsaved = 0;
+	}
+
+	// shortcut: two servers saving in the same instant can lose one interval; add a lock if groups report it
+	Com_sprintf(tmp, sizeof(tmp), "%s.tmp", path);
+	FILE *f = fopen(tmp, "w");
+	bool ok = f != NULL;
+	for ( size_t k = 0; ok && k < list.size(); k++ )
+		ok = fprintf(f, "%s %lld %lld\n", list[k].id, list[k].first, list[k].seconds) > 0;
+	ok = f && fclose(f) == 0 && ok;
+#ifdef _WIN32
+	ok = ok && MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING);
+#else
+	ok = ok && rename(tmp, path) == 0;
+#endif
+	if ( !ok )
+		Com_Printf("plusid: cannot write %s, playtime not saved\n", path);
+}
+
+// adds the seconds that passed to every connected player with an ID; a
+// zombie slot keeps its ID until freed but is not playing
+static void PlusId_Tick()
+{
+	time_t now = time(NULL);
+
+	if ( !lastTick || now < lastTick )
+		lastTick = now;
+	for ( int i = 0; i < MAX_CLIENTS; i++ )
+	{
+		if ( plusIds[i][0] && svs.clients[i].state >= CS_CONNECTED )
+			slots[i].unsaved += now - lastTick;
+	}
+	lastTick = now;
+}
+
+void PlusId_Frame()
+{
+	PlusId_Tick();
+	if ( time(NULL) - lastSave >= 60 )
+		PlusId_Save();
+}
+
+// at the end of the map and at shutdown
+void PlusId_Shutdown()
+{
+	PlusId_Tick();
+	PlusId_Save();
+}
+
 void PlusId_ClientConnected(int clientNum, const char *id)
 {
+	std::vector<PlusId_Seen> list;
+	char path[MAX_OSPATH * 2];
+
 	Q_strncpyz(plusIds[clientNum], id, sizeof(plusIds[clientNum]));
+	slots[clientNum].first = time(NULL);
+	slots[clientNum].stored = slots[clientNum].unsaved = 0;
+	if ( !*id )
+		return;
+
+	PlusId_Tick();
+	PlusId_SeenPath(path, sizeof(path));
+	PlusId_ReadSeen(path, list);
+	for ( size_t k = 0; k < list.size(); k++ )
+	{
+		if ( !strcmp(list[k].id, id) )
+		{
+			slots[clientNum].first = list[k].first;
+			slots[clientNum].stored = list[k].seconds;
+		}
+	}
 }
 
 void PlusId_ClientDropped(int clientNum)
 {
+	if ( plusIds[clientNum][0] )
+	{
+		PlusId_Tick();
+		PlusId_Save();
+	}
 	plusIds[clientNum][0] = '\0';
+	slots[clientNum].unsaved = 0;
+}
+
+int PlusId_Playtime(int clientNum)
+{
+	return plusIds[clientNum][0] ? (int)( slots[clientNum].stored + slots[clientNum].unsaved ) : 0;
+}
+
+int PlusId_FirstSeenAgo(int clientNum)
+{
+	return plusIds[clientNum][0] ? (int)( time(NULL) - slots[clientNum].first ) : 0;
 }
 
 const char *PlusId_ForClient(int clientNum)
@@ -143,6 +323,7 @@ void PlusId_RegisterDvars()
 	sv_publicAddress = Dvar_RegisterString("sv_publicAddress", "", DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	sv_requirePlusId = Dvar_RegisterBool("sv_requirePlusId", false, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	sv_plusIdNotice = Dvar_RegisterString("sv_plusIdNotice", "", DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
+	sv_plusIdSeenFile = Dvar_RegisterString("sv_plusIdSeenFile", "plusid_seen.txt", DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 }
 
 // at the first map, when the config has run and net_ip is set
@@ -164,11 +345,12 @@ static void PlusId_Status_f()
 		return;
 	}
 
-	Com_Printf("num name id\n");
+	PlusId_Tick();
+	Com_Printf("num name id playtime first_seen_ago\n");
 	for ( int i = 0; i < sv_maxclients->current.integer; i++ )
 	{
 		if ( svs.clients[i].state >= CS_CONNECTED )
-			Com_Printf("%i %s %s\n", i, svs.clients[i].name, plusIds[i][0] ? plusIds[i] : "-");
+			Com_Printf("%i %s %s %i %i\n", i, svs.clients[i].name, plusIds[i][0] ? plusIds[i] : "-", PlusId_Playtime(i), PlusId_FirstSeenAgo(i));
 	}
 }
 

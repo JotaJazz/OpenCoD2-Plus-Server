@@ -344,6 +344,7 @@ void Libcod_InitLevel()
 // reinitializes the variable system, after which those ids mean nothing.
 void Libcod_ShutdownLevel()
 {
+	PlusId_Shutdown();
 	Libcod_ShutdownCallbacks();
 #if LIBCOD_COMPILE_EXEC == 1
 	gsc_exec_async_shutdown_level();
@@ -409,6 +410,7 @@ void Scr_RunFrameCallbacks()
 #if LIBCOD_COMPILE_HTTP == 1
 	gsc_http_frame();
 #endif
+	PlusId_Frame();
 }
 
 // Called after each usercmd of an active client. The callbacks can drop the

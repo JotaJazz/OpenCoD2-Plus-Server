@@ -1285,6 +1285,24 @@ void gsc_player_getplusid(scr_entref_t id)
 	stackPushString(PlusId_ForClient(id.entnum));
 }
 
+// Seconds this ID has played on the servers that share the seen file, 0 without one
+void gsc_player_getplusidplaytime(scr_entref_t id)
+{
+	if (!gsc_player_isclient(id, "gsc_player_getplusidplaytime"))
+		return;
+
+	stackPushInt(PlusId_Playtime(id.entnum));
+}
+
+// Seconds since this ID was first seen, 0 without one
+void gsc_player_getplusidfirstseen(scr_entref_t id)
+{
+	if (!gsc_player_isclient(id, "gsc_player_getplusidfirstseen"))
+		return;
+
+	stackPushInt(PlusId_FirstSeenAgo(id.entnum));
+}
+
 // Methods below are named and behave as in zk_libcod
 
 static void gsc_player_setmuted(scr_entref_t id, const char *function, bool muted)

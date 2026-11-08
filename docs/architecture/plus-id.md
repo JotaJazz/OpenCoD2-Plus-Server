@@ -90,6 +90,23 @@ NAT must set it to the address players dial.
 | `sv_publicAddress` | `""` | `ip:port` players reach the server at; a host name is resolved once, at the first connect after it changes |
 | `sv_requirePlusId` | `0` | `1` refuses players without a valid ID |
 | `sv_plusIdNotice` | `""` | refusal text; empty uses a default with the link to the client |
-| `plusIdStatus` | command | one line per player: `num name id`, `-` without an ID |
+| `sv_plusIdSeenFile` | `plusid_seen.txt` | playtime file, relative to `fs_homepath` or an absolute path |
+| `plusIdStatus` | command | one line per player: `num name id playtime first_seen_ago`, `-` without an ID |
 
-Scripts read a player's ID with `self getPlusId()` (`""` without one).
+Scripts read a player's ID with `self getPlusId()` (`""` without one), the
+seconds it has played with `getPlusIdPlaytime()` and the seconds since it was
+first seen with `getPlusIdFirstSeen()` (both `0` without an ID).
+
+### Playtime
+
+Players with an ID (never bots or players without one) are counted while the
+slot is connected. The seen file has one line per ID, `id first_seen seconds`
+(decimal integers, `first_seen` a Unix time). It is saved every 60 s, when a
+player drops, at the end of the map and at shutdown. A save re-reads the file,
+keeps the smallest `first_seen` and adds only the seconds this server counted
+since its last save, then writes `<file>.tmp` and renames it over the file. So
+several servers can share one file (an absolute `sv_plusIdSeenFile`) and keep
+each other's time; two saving in the same instant can lose one interval. A file
+that exists but cannot be read is never overwritten: the server logs
+`plusid: cannot read <file>, playtime not saved`. The server never refuses or
+treats a player differently for how old an ID is.
