@@ -438,6 +438,15 @@ bots and about 1,025 ms for test clients, come from how those send commands: a
 code shorter than 11 bits has to wait for a real match. The rest of the bytes are mostly the floats in
 `pos.trBase`, `pos.trDelta` and `angles2`, which XOR barely shrinks.
 
+The recoding of the entity deltas was measured again on 2026-11-08 at `sv_fps`
+60 with the offset in: 20 Plus test clients and 20 bots in tdm on `mp_toujane`
+and `mp_carentan`, 90 s each, the same bit-cost model on the field stream. It
+saves 1.3–1.6% of the entity field bits, about 1% of a message, mostly in
+`eventSequence`, `pos.trDuration` and `apos.trTime`: the 12–14% estimated above
+was nearly all `pos.trTime`, which the offset already takes. Not worth a Plus
+version, a client decoder and a second format, so it was dropped; a trained
+Huffman table and zstd were not measured again.
+
 The per-field bit model of `.fld` counts each field three times, because the
 paired writes log too: its shares hold, and comparing them with bytes on the
 wire does not.

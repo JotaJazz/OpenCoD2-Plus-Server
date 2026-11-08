@@ -7,6 +7,7 @@ rejected and what is left open; for what changed in detail see
 
 ## 2026-11-08 — Plus batch: exact wait
 
+- The compact entity format (Plus 124) was dropped before any code: measured at 60 Hz with the `pos.trTime` offset in, XOR floats and variable-length integers save 1.3–1.6% of the entity field bits ([plus-protocol.md](../architecture/plus-protocol.md#milestone-3-measurements)). The maintainer chose to drop it over a trained Huffman table (about 5%) or zstd with a dictionary (about 10%), both of which also need Plus 124.
 - `wait` at 62.5 Hz: frames are whole, so `wait 0.05` took 3 (48 ms) and `wait 1` 63. Above 20 Hz the leftover fraction carries to the thread's next wait, in a table by start thread id (`GetStartLocalId`, so a wait in a called function shares its thread's carry); a reused id starts with at most half a frame of the old thread's. 20 Hz keeps the stock rounding, so `wait 0.075` there still takes 2 frames.
 
 ## 2026-11-08 — Plus batch: votes and slow downloads
