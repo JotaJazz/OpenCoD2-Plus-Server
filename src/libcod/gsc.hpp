@@ -235,8 +235,8 @@ struct PlusIdBan
 	char reason[128];
 	char by[64];
 	char evidence[256];
-	long long date;
-	long long expires; // Unix seconds, 0 permanent
+	long long date;    // Unix time
+	long long expires; // Unix time, 0 permanent
 	int guid;          // 0 without one
 	char ip[16];       // "" without one
 };
@@ -245,6 +245,9 @@ const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, in
 const PlusIdBan *PlusId_FindBan(const char *id, const char **listName);
 void PlusId_KickBanned();
 const char *PlusId_FlagsForClient(int clientNum);
+// ban dates as in the list format: "YYYY-MM-DD" (00:00 UTC) or "YYYY-MM-DDTHH:MM:SSZ", nothing else
+bool PlusId_ParseTime(const char *text, long long *out);
+void PlusId_FormatTime(long long t, bool dateOnly, char out[21]);
 bool PlusId_AddressAccepted(netadr_t signedAdr, netadr_t from);
 void PlusId_ClientConnected(int clientNum, const char *id, int flags);
 void PlusId_ClientDropped(int clientNum);

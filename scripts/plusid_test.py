@@ -324,6 +324,11 @@ def run_cases(port, protocol, log_path, game_log, seen_path, check):
             client.close()
 
 
+def parse_time(text):
+    import calendar
+    return calendar.timegm(time.strptime(text, '%Y-%m-%dT%H:%M:%SZ'))
+
+
 def read_bans(path):
     return json.load(open(path))['entries'] if os.path.exists(path) else []
 
@@ -357,13 +362,15 @@ def run_ban_cases(port, protocol, log_path, game_log, bans_path, check):
         num, _ = status_extra(port, 'byslot')
         smoke_test.rcon(port, RCON, f'banPlusId {num} 1 test')
         entry = ([b for b in read_bans(bans_path) if b['id'] == want] or [{}])[0]
+        left = parse_time(entry.get('expires', '')) - time.time() if re.match(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$', entry.get('expires', '')) else 0
         check('ban_by_slot', gone('byslot') and entry.get('ip') == '127.0.0.1' and 'guid' in entry
-              and entry.get('expires', 0) - entry.get('date', 0) == 60 and entry.get('by') == 'rcon' and entry.get('reason') == 'test', str(entry))
+              and 50 <= left <= 61 and entry.get('date') == time.strftime('%Y-%m-%d', time.gmtime())
+              and entry.get('by') == 'rcon' and entry.get('reason') == 'test', f'{entry} {left}')
 
         # edited by hand: the file is read again when its time changes
         time.sleep(1.1)
         bans = json.load(open(bans_path))
-        bans['entries'][0]['expires'] = int(time.time()) - 5
+        bans['entries'][0]['expires'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() - 5))
         json.dump(bans, open(bans_path, 'w'))
         reply = join('byslot', priv)
         check('expiry', reply is None and status(port).get('byslot') == want, str(reply))
@@ -381,12 +388,28 @@ def run_ban_cases(port, protocol, log_path, game_log, bans_path, check):
               and smoke_test.wait_for(lambda: 'plusidflags ' + flags in smoke_test.log_lines(game_log)), f'{reply} {flags} {logged}')
         check('no_flag_without_ban', status_extra(port, 'byslot')[1] in (None, '-'), str(status_extra(port, 'byslot')))
 
-        # a hostile file keeps the list in memory
+        # a hostile file keeps the bans in memory: the banned ID is still refused
         time.sleep(1.1)
         before = len(read_bans(bans_path))
         open(bans_path, 'w').write('{"entries":[{"id":"nope"}]}')
+        reply = join('banned', priv)
+        check('bad_file_keeps_bans', before == 1 and reply is not None and reply.startswith('error') and 'evasion' in reply, str(reply))
+
+        # and nothing is written over it, not even by a new ban
+        bad = open(bans_path, 'rb').read()
+        out = smoke_test.rcon(port, RCON, f'banPlusId {plus_id(public_key(make_key()))} 0 lost')
+        out2 = smoke_test.rcon(port, RCON, 'unbanPlusId P-AAAA-AAAA-AAAA-AAAA')
+        check('bad_file_no_write', open(bans_path, 'rb').read() == bad and 'fix it first' in out and 'fix it first' in out2, f'{out} {out2}')
+
+        # a file that reads again clears the state; a date format that is not the spec's does not read
+        time.sleep(1.1)
+        open(bans_path, 'w').write(json.dumps({'entries': [{'id': plus_id(public_key(make_key())), 'expires': 1794178571}]}))
         out = smoke_test.rcon(port, RCON, 'unbanPlusId P-AAAA-AAAA-AAAA-AAAA')
-        check('bad_file', before == 1 and 'plusid: cannot read' in out, f'{before} {out}')
+        check('bad_date_rejected', 'fix it first' in out, out)
+        time.sleep(1.1)
+        open(bans_path, 'w').write(json.dumps({'entries': [{'id': plus_id(public_key(make_key())), 'date': '2026-11-01', 'expires': None}]}))
+        out = smoke_test.rcon(port, RCON, 'unbanPlusId P-AAAA-AAAA-AAAA-AAAA')
+        check('good_file_clears', 'fix it first' not in out and 'is not banned' in out, out)
     finally:
         for client in clients:
             client.close()

@@ -103,13 +103,16 @@ first seen with `getPlusIdFirstSeen()` (both `0` without an ID).
 ### Local bans
 
 `plusid_bans.json` in `fs_homepath`: `{"format": 1, "entries": [...]}`, each entry
-`id`, `reason`, `by`, `evidence`, `date` and `expires` (Unix seconds, `null` is
-permanent), plus `guid` (0 is none) and `ip` ("" is none), which only local bans
+`id`, `reason`, `by`, `evidence`, `date` (`YYYY-MM-DD`, UTC) and `expires`
+(`YYYY-MM-DDTHH:MM:SSZ`, or `null` for permanent; a date alone also reads, as
+00:00 UTC), plus `guid` (0 is none) and `ip` ("" is none), which only local bans
 have. It is written through `<file>.tmp.<pid>` and a rename, and read again when
 its size or time changed, so an edit applies at the next connect. The file is
 read as hostile: an entry with a bad ID, type or length (reason 127, by 63,
-evidence 255 characters) rejects the whole file, the bans in memory stay and the
-log says `plusid: cannot read <file>`. An expired ban (`expires` passed) is
+evidence 255 characters) rejects the whole file (any other date format too), the bans in memory stay and the
+log says `plusid: cannot read <file>`. While the file is bad, `banPlusId` and
+`unbanPlusId` refuse (`plusid: cannot read <file>, fix it first`) and never
+overwrite it; a file that reads again clears that. An expired ban (`expires` passed) is
 ignored, not deleted.
 
 `PlusId_CheckConnect` looks the verified ID up (`PlusId_FindBan`) before the

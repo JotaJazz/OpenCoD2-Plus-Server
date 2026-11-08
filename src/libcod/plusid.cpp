@@ -412,7 +412,7 @@ void PlusId_SpawnServer()
 
 // Local bans (docs/architecture/plus-id.md): plusid_bans.json in fs_homepath,
 // {"format":1,"entries":[{id, reason, by, evidence, date, expires, guid, ip}]}
-// with date and expires in Unix seconds (expires null: permanent). The file
+// with date and expires as UTC text (expires null: permanent). The file
 // is read again when its size or time changed, so an edit is applied at the
 // next connect; it is read as hostile.
 
@@ -423,6 +423,48 @@ void PlusId_SpawnServer()
 
 static std::vector<PlusIdBan> localBans;
 static long long bansSize = -1, bansTime;
+// the file exists and could not be read: nothing is written over it until it reads
+static bool bansBad;
+
+// "YYYY-MM-DD" (00:00 UTC) or "YYYY-MM-DDTHH:MM:SSZ", nothing else, a real date
+bool PlusId_ParseTime(const char *text, long long *out)
+{
+	struct tm tm;
+	int n = (int)strlen(text);
+
+	if ( ( n != 10 && n != 20 ) || strspn(text, "0123456789-T:Z") != (size_t)n )
+		return false;
+	memset(&tm, 0, sizeof(tm));
+	int fields = n == 10 ? sscanf(text, "%4d-%2d-%2d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday)
+	                     : sscanf(text, "%4d-%2d-%2dT%2d:%2d:%2dZ", &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+	char again[21];
+	if ( fields != ( n == 10 ? 3 : 6 ) || tm.tm_year < 1970 )
+		return false;
+	tm.tm_year -= 1900;
+	tm.tm_mon--;
+#ifdef _WIN32
+	time_t t = _mkgmtime(&tm);
+#else
+	time_t t = timegm(&tm);
+#endif
+	// timegm normalizes 31 February; the same text back means it was real
+	PlusId_FormatTime(t, n == 10, again);
+	if ( t == (time_t)-1 || strcmp(again, text) )
+		return false;
+	*out = t;
+	return true;
+}
+
+void PlusId_FormatTime(long long t, bool dateOnly, char out[21])
+{
+	time_t tt = (time_t)t;
+	struct tm *tm = gmtime(&tt);
+
+	if ( !tm || tm->tm_year > 8099 )
+		strcpy(out, dateOnly ? "1970-01-01" : "1970-01-01T00:00:00Z");
+	else
+		strftime(out, 21, dateOnly ? "%Y-%m-%d" : "%Y-%m-%dT%H:%M:%SZ", tm);
+}
 
 static bool PlusId_ValidId(const char *id)
 {
@@ -471,6 +513,14 @@ static bool PlusId_JsonText(yyjson_val *obj, const char *key, char *to, size_t s
 }
 
 // absent or null is 0
+static bool PlusId_JsonTime(yyjson_val *obj, const char *key, long long *to)
+{
+	yyjson_val *v = yyjson_obj_get(obj, key);
+
+	*to = 0;
+	return !v || yyjson_is_null(v) || ( yyjson_is_str(v) && PlusId_ParseTime(yyjson_get_str(v), to) );
+}
+
 static bool PlusId_JsonNumber(yyjson_val *obj, const char *key, long long *to, long long min, long long max)
 {
 	yyjson_val *v = yyjson_obj_get(obj, key);
@@ -514,6 +564,7 @@ static void PlusId_LoadBans()
 	bansTime = mtime;
 	if ( size < 0 )
 	{
+		bansBad = false;
 		localBans.clear();
 		return;
 	}
@@ -535,8 +586,8 @@ static void PlusId_LoadBans()
 		ok = ok && yyjson_is_obj(e) && yyjson_is_str(id) && PlusId_ValidId(yyjson_get_str(id))
 		     && PlusId_JsonText(e, "reason", ban.reason, sizeof(ban.reason)) && PlusId_JsonText(e, "by", ban.by, sizeof(ban.by))
 		     && PlusId_JsonText(e, "evidence", ban.evidence, sizeof(ban.evidence)) && PlusId_JsonText(e, "ip", ban.ip, sizeof(ban.ip))
-		     && PlusId_ValidIp(ban.ip) && PlusId_JsonNumber(e, "date", &ban.date, 0, LLONG_MAX)
-		     && PlusId_JsonNumber(e, "expires", &ban.expires, 0, LLONG_MAX) && PlusId_JsonNumber(e, "guid", &guid, INT_MIN, INT_MAX);
+		     && PlusId_ValidIp(ban.ip) && PlusId_JsonTime(e, "date", &ban.date)
+		     && PlusId_JsonTime(e, "expires", &ban.expires) && PlusId_JsonNumber(e, "guid", &guid, INT_MIN, INT_MAX);
 		if ( !ok )
 			break;
 		ban.guid = (int)guid;
@@ -545,6 +596,7 @@ static void PlusId_LoadBans()
 	}
 	yyjson_doc_free(doc);
 
+	bansBad = !ok;
 	if ( ok )
 		localBans.swap(list);
 	else
@@ -569,9 +621,14 @@ static bool PlusId_WriteBans()
 		yyjson_mut_obj_add_strcpy(doc, e, "reason", b.reason);
 		yyjson_mut_obj_add_strcpy(doc, e, "by", b.by);
 		yyjson_mut_obj_add_strcpy(doc, e, "evidence", b.evidence);
-		yyjson_mut_obj_add_sint(doc, e, "date", b.date);
+		char when[21];
+		PlusId_FormatTime(b.date, true, when);
+		yyjson_mut_obj_add_strcpy(doc, e, "date", when);
 		if ( b.expires )
-			yyjson_mut_obj_add_sint(doc, e, "expires", b.expires);
+		{
+			PlusId_FormatTime(b.expires, false, when);
+			yyjson_mut_obj_add_strcpy(doc, e, "expires", when);
+		}
 		else
 			yyjson_mut_obj_add_null(doc, e, "expires");
 		yyjson_mut_obj_add_int(doc, e, "guid", b.guid);
@@ -659,6 +716,19 @@ static void PlusId_Unlist(const char *id)
 	}
 }
 
+// a file that did not read is never overwritten with the list in memory
+static bool PlusId_CanChangeBans()
+{
+	char path[MAX_OSPATH * 2];
+
+	PlusId_LoadBans();
+	if ( !bansBad )
+		return true;
+	PlusId_Path("plusid_bans.json", path, sizeof(path));
+	Com_Printf("plusid: cannot read %s, fix it first\n", path);
+	return false;
+}
+
 static void PlusId_Ban_f()
 {
 	PlusIdBan ban;
@@ -700,7 +770,8 @@ static void PlusId_Ban_f()
 	}
 
 	// a new ban of an ID replaces the old one
-	PlusId_LoadBans();
+	if ( !PlusId_CanChangeBans() )
+		return;
 	std::vector<PlusIdBan> before = localBans;
 	PlusId_Unlist(ban.id);
 	localBans.push_back(ban);
@@ -723,7 +794,8 @@ static void PlusId_Unban_f()
 		return;
 	}
 
-	PlusId_LoadBans();
+	if ( !PlusId_CanChangeBans() )
+		return;
 	std::vector<PlusIdBan> before = localBans;
 	PlusId_Unlist(id);
 	if ( localBans.size() == before.size() )
