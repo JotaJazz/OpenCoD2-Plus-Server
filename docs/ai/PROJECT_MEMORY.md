@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — the Plus server serves its downloads
+
+- A Plus server behind a home router has no web host for its mod iwds and does not know its public address. `sv_wwwBaseURL auto` redirects Plus clients to `plus:<name>` and a worker thread in `sv_www_plus.cpp` serves the file on TCP on the game port, only to an IP holding a grant from the redirect; the client builds the URL from the server it plays on (spec in [../architecture/plus-protocol.md](../architecture/plus-protocol.md#downloads)). Linux only, no version bump, other builds byte for byte as `dev`.
+- Left out: a start line and a refused-request counter in the log, and a token in the URL (the grant is by IP).
+- Left open: a player whose TCP leaves from another IP than its UDP, and frame times during a capped download (not measured with bots), in [../roadmap/debt.md](../roadmap/debt.md).
+
 ## 2026-11-07 — the antilag rewinds the pose
 
 - The antilag moved only origins, so the hitboxes kept the present lean, yaw, aim and stance flags. In `PLUS=1`, `G_PlusRecordPose` keeps each player's pose per frame (128 frames) and the antilag sets it with the origin, resetting the skeleton cache. The controllers' own state is kept, since they lerp toward their angles as the client draws them; rebuilding from the archived playerstate would give the settled pose, wrong in exactly the fast moves.

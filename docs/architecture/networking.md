@@ -48,6 +48,10 @@ Huffman: `src/qcommon/msg_mp.cpp`.
   `sv_wwwDownload`; the 1.0 client has no HTTP download, about 20 KB/s in game.
 - Set `sv_wwwBaseURL` in a cfg, in quotes: on the command line or over rcon
   the `//` starts a comment and leaves `http:`.
+- `make PLUS=1` on Linux: `sv_wwwBaseURL auto` makes the server itself the
+  HTTP side, on TCP on the game port, for Plus clients only (open the port in
+  TCP too in the router). Others get the UDP download. See
+  [plus-protocol.md](plus-protocol.md#downloads).
 - `MAX_MSGLEN` is `0x20000` in the 1.3 build and `0x4000` in the 1.0 build;
   packets are at most `MAX_PACKETLEN` (1400) bytes, fragments `FRAGMENT_SIZE`
   (1300).
