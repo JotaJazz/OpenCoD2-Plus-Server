@@ -16,6 +16,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 - **Simpler builds:** `make` builds the Linux binary directly, `make windows` cross-compiles for Windows, and GitHub Actions builds every variant on each push.
 - **Example `server.cfg`:** `scripts/server.cfg.example` lists every variable the server registers; `scripts/gen_server_cfg.py` regenerates it from the source.
 - **Launchers:** `scripts/windows/iniciar_cod2rev.bat` and `scripts/linux/iniciar_cod2rev.sh`, with a LAN mode and an internet mode. Both use port `28960`, and they set `logfile 2` (and `sv_cracked 1` in LAN mode only) before `+exec server.cfg`, so `server.cfg` can change them; they used to set them after it, overriding the admin's config, and turned on `sv_cracked` in internet mode too.
+- **Script errors don't flood the log (`make PLUS=1`):** outside developer mode a runtime error does not end the script thread, as in the original game, so a broken mod repeats the same error every frame, and with `logErrors 1` the console log got one block per frame. A Plus server prints the first one and then a line with how many times it happened, every 10 s; the scripts run as before.
 - **Ready config for a Plus server:** `scripts/plus.cfg` runs your `server.cfg` and then sets what a 60 Hz CoD2 1.3 Plus server with its own downloads needs (`sv_fps 60`, `sv_allowDownload 1`, `sv_wwwDownload 1`, `sv_wwwBaseURL auto`), with the router and firewall ports in its header. `CFG=plus.cfg ./iniciar_cod2rev.sh internet` or `systemctl enable --now cod2rev@plus` start it.
 - **systemd unit:** `scripts/linux/cod2rev@.service` runs one server per instance (`cod2rev@public` execs `public.cfg`) with its own `fs_homepath` in `/var/lib/cod2rev/<instance>`, as an unprivileged user, with `net_strictPort 1`, a restart after a crash and a clean stop with SIGTERM. The port, `dedicated` and the map can be set per instance in `/etc/cod2rev/<instance>.env`.
 
@@ -179,7 +180,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `sv_botUseTriggerUse` | `0` | 0–1 | `1` sends a bot a `bot_trigger` notify, with the trigger, while it stands in a use trigger it could use. |
 | `g_safePrecache` | `0` | 0–1 | `1` turns model and effect precache overflows, and models set without precaching, into warnings: they are shown as the default model or missing effect. From the next map. |
 | `g_reservedModels` | `0` | 0–255 | Model slots the map's own entities can't use, kept for the scripts' precaches. From the next map. |
-| `logErrors` | `0` | 0–1 | `1` writes script runtime errors to the console log without developer mode (message only). |
+| `logErrors` | `0` | 0–1 | `1` writes script runtime errors to the console log without developer mode (message only). On a Plus server the same message again prints only as a count, every 10 s. |
 | `g_noMoverBlockage` | `0` | 0–1 | `1` lets movers (script brush models, models, origins) go on when an entity blocks them. |
 | `g_spawnMapWeapons` | `1` | 0–1 | `0` neither spawns nor precaches the map's weapons; `CodeCallback_MapWeaponsLoad` gets them. |
 | `g_spawnMapTurrets` | `1` | 0–1 | `0` neither spawns nor precaches the map's turrets; `CodeCallback_MapTurretsLoad` gets them. |
