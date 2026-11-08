@@ -866,6 +866,7 @@ void SV_DirectConnect( netadr_t from )
 #ifdef LIBCOD
 	int authorizationChallenge = -1;
 	char plusId[22] = "";
+	int plusIdFlags = 0;
 #endif
 
 	Com_DPrintf("SV_DirectConnect()\n");
@@ -1004,7 +1005,7 @@ void SV_DirectConnect( netadr_t from )
 #ifdef LIBCOD
 		// after the challenge, so that a spoofed address costs no ECDSA check;
 		// takes pk, ps and pa out of the userinfo
-		const char *refuse = PlusId_CheckConnect( from, userinfo, challenge, plusId );
+		const char *refuse = PlusId_CheckConnect( from, userinfo, challenge, guid, plusId, &plusIdFlags );
 
 		if ( refuse )
 		{
@@ -1156,7 +1157,7 @@ gotnewcl:
 #ifdef LIBCOD
 	Libcod_ConnectAuthorizationState(clientNum, authorizationChallenge);
 	// before ClientConnect, whose script callback can ask for it
-	PlusId_ClientConnected(clientNum, plusId);
+	PlusId_ClientConnected(clientNum, plusId, plusIdFlags);
 #endif
 
 	// get the game a chance to reject this connection or modify the userinfo

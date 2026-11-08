@@ -229,9 +229,24 @@ void PM_ProjectVelocity(const float *velIn, const float *normal, float *velOut);
 void SV_AddLibcodCommands();
 
 // plusid.cpp: the Plus ID proven at connect; "" for a client without one
-const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, char idOut[22]);
+struct PlusIdBan
+{
+	char id[22];
+	char reason[128];
+	char by[64];
+	char evidence[256];
+	long long date;
+	long long expires; // Unix seconds, 0 permanent
+	int guid;          // 0 without one
+	char ip[16];       // "" without one
+};
+const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, int guid, char idOut[22], int *flagsOut);
+// the live ban of an ID, local first; *listName is NULL for a local one. Valid until the next call
+const PlusIdBan *PlusId_FindBan(const char *id, const char **listName);
+void PlusId_KickBanned();
+const char *PlusId_FlagsForClient(int clientNum);
 bool PlusId_AddressAccepted(netadr_t signedAdr, netadr_t from);
-void PlusId_ClientConnected(int clientNum, const char *id);
+void PlusId_ClientConnected(int clientNum, const char *id, int flags);
 void PlusId_ClientDropped(int clientNum);
 const char *PlusId_ForClient(int clientNum);
 int PlusId_Playtime(int clientNum);

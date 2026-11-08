@@ -91,11 +91,35 @@ NAT must set it to the address players dial.
 | `sv_requirePlusId` | `0` | `1` refuses players without a valid ID |
 | `sv_plusIdNotice` | `""` | refusal text; empty uses a default with the link to the client |
 | `sv_plusIdSeenFile` | `plusid_seen.txt` | playtime file, relative to `fs_homepath` or an absolute path |
-| `plusIdStatus` | command | one line per player: `num name id playtime first_seen_ago`, `-` without an ID |
+| `plusIdStatus` | command | one line per player: `num name id playtime first_seen_ago flags`, `-` without an ID or a flag |
+| `banPlusId <id\|clientnum> <minutes> <reason...>` | command | bans an ID (`minutes` 0 is permanent) and drops it; a number is a client slot, whose guid and IP are kept in the ban; `by` is `rcon` |
+| `unbanPlusId <id>` | command | lifts a local ban |
 
 Scripts read a player's ID with `self getPlusId()` (`""` without one), the
 seconds it has played with `getPlusIdPlaytime()` and the seconds since it was
 first seen with `getPlusIdFirstSeen()` (both `0` without an ID).
+`getPlusIdFlags()` is `""`, `"guid"`, `"ip"` or `"guid,ip"` (see Local bans).
+
+### Local bans
+
+`plusid_bans.json` in `fs_homepath`: `{"format": 1, "entries": [...]}`, each entry
+`id`, `reason`, `by`, `evidence`, `date` and `expires` (Unix seconds, `null` is
+permanent), plus `guid` (0 is none) and `ip` ("" is none), which only local bans
+have. It is written through `<file>.tmp.<pid>` and a rename, and read again when
+its size or time changed, so an edit applies at the next connect. The file is
+read as hostile: an entry with a bad ID, type or length (reason 127, by 63,
+evidence 255 characters) rejects the whole file, the bans in memory stay and the
+log says `plusid: cannot read <file>`. An expired ban (`expires` passed) is
+ignored, not deleted.
+
+`PlusId_CheckConnect` looks the verified ID up (`PlusId_FindBan`) before the
+`sv_requirePlusId` check and refuses with `You are banned from this server:
+<reason>`; `banPlusId` also drops that ID when connected (`PlusId_KickBanned`).
+Only slots in CS_CONNECTED or later count; a zombie keeps its ID until freed.
+A player whose guid (non-zero) or IP equals that of a live ban of another ID gets
+the flag `guid` and/or `ip`, kept for the slot and logged as `plusid: possible
+evasion <new> matches <banned> by ip`. The player is not refused. The older
+GUID/IP bans (`banUser`, `ban.txt`, `SV_IsBannedIp`) are separate and unchanged.
 
 ### Playtime
 

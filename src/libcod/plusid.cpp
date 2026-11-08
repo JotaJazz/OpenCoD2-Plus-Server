@@ -1,7 +1,10 @@
 #include "gsc.hpp"
 #include "plusid.hpp"
+#include "yyjson/yyjson.h"
 
 #include <errno.h>
+#include <limits.h>
+#include <sys/stat.h>
 #include <vector>
 #ifdef _WIN32
 #include <windows.h>
@@ -20,6 +23,8 @@ static dvar_t *sv_requirePlusId;
 static dvar_t *sv_plusIdNotice;
 static dvar_t *sv_plusIdSeenFile;
 static char plusIds[MAX_CLIENTS][22];
+// ban-evasion marks of each player: PLUSID_FLAG_GUID, PLUSID_FLAG_IP
+static int plusFlags[MAX_CLIENTS];
 
 // Playtime per ID (docs/architecture/plus-id.md): the file has one line per
 // ID, "id first_seen seconds". A slot keeps what the file said when its player
@@ -106,13 +111,19 @@ static bool PlusId_SignedAddress(const char *text, netadr_t *adr)
 	       && adr->type == NA_IP && !strcmp(NET_AdrToString(*adr), text);
 }
 
-const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, char idOut[22])
+static int PlusId_EvasionFlags(const char *id, netadr_t from, int guid);
+
+// a ban refusal is a static buffer, which the caller sends at once
+const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, int guid, char idOut[22], int *flagsOut)
 {
+	static char banText[192];
+	const PlusIdBan *ban;
 	static leakyBucket_t bucket;
 	char pk[PLUSID_PK_HEX + 2], ps[PLUSID_PS_HEX + 2], pa[64];
 	netadr_t signedAdr;
 
 	idOut[0] = '\0';
+	*flagsOut = 0;
 	Q_strncpyz(pk, Info_ValueForKey(userinfo, "pk"), sizeof(pk));
 	Q_strncpyz(ps, Info_ValueForKey(userinfo, "ps"), sizeof(ps));
 	Q_strncpyz(pa, Info_ValueForKey(userinfo, "pa"), sizeof(pa));
@@ -138,20 +149,41 @@ const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, ch
 		}
 	}
 
+	if ( idOut[0] && ( ban = PlusId_FindBan(idOut, NULL) ) )
+	{
+		Com_Printf("plusid: refused banned %s from %s\n", idOut, NET_AdrToString(from));
+		Com_sprintf(banText, sizeof(banText), "You are banned from this server: %s", ban->reason);
+		return banText;
+	}
+
+	if ( idOut[0] )
+		*flagsOut = PlusId_EvasionFlags(idOut, from, guid);
+
 	if ( !idOut[0] && sv_requirePlusId->current.boolean )
 		return *sv_plusIdNotice->current.string ? sv_plusIdNotice->current.string : PLUSID_NOTICE;
 
 	return NULL;
 }
 
-static void PlusId_SeenPath(char *path, size_t size)
+// a file name from a dvar or a fixed one: absolute as it is, else under fs_homepath
+static void PlusId_Path(const char *name, char *path, size_t size)
 {
-	const char *name = sv_plusIdSeenFile->current.string, *home = Dvar_FindVar("fs_homepath") ? Dvar_FindVar("fs_homepath")->current.string : "";
+	const char *home = Dvar_FindVar("fs_homepath") ? Dvar_FindVar("fs_homepath")->current.string : "";
 
 	if ( name[0] == '/' || name[0] == '\\' || name[1] == ':' || !*home )
 		Q_strncpyz(path, name, size);
 	else
 		Com_sprintf(path, size, "%s/%s", home, name);
+}
+
+// the tmp file renamed over the file, which Windows only does with this call
+static bool PlusId_Replace(const char *tmp, const char *path)
+{
+#ifdef _WIN32
+	return MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING);
+#else
+	return rename(tmp, path) == 0;
+#endif
 }
 
 // False when the file exists and cannot be read whole: it is then never
@@ -211,7 +243,7 @@ static void PlusId_Save()
 	if ( !any )
 		return;
 
-	PlusId_SeenPath(path, sizeof(path));
+	PlusId_Path(sv_plusIdSeenFile->current.string, path, sizeof(path));
 	if ( !PlusId_ReadSeen(path, list) )
 	{
 		Com_Printf("plusid: cannot read %s, playtime not saved\n", path);
@@ -243,11 +275,7 @@ static void PlusId_Save()
 	for ( size_t k = 0; ok && k < list.size(); k++ )
 		ok = fprintf(f, "%s %lld %lld\n", list[k].id, list[k].first, list[k].seconds) > 0;
 	ok = f && fclose(f) == 0 && ok;
-#ifdef _WIN32
-	ok = ok && MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING);
-#else
-	ok = ok && rename(tmp, path) == 0;
-#endif
+	ok = ok && PlusId_Replace(tmp, path);
 	if ( !ok )
 	{
 		Com_Printf("plusid: cannot write %s, playtime not saved\n", path);
@@ -297,19 +325,20 @@ void PlusId_Shutdown()
 	PlusId_Save();
 }
 
-void PlusId_ClientConnected(int clientNum, const char *id)
+void PlusId_ClientConnected(int clientNum, const char *id, int flags)
 {
 	std::vector<PlusId_Seen> list;
 	char path[MAX_OSPATH * 2];
 
 	Q_strncpyz(plusIds[clientNum], id, sizeof(plusIds[clientNum]));
+	plusFlags[clientNum] = flags;
 	slots[clientNum].first = time(NULL);
 	slots[clientNum].stored = slots[clientNum].unsaved = 0;
 	if ( !*id )
 		return;
 
 	PlusId_Tick();
-	PlusId_SeenPath(path, sizeof(path));
+	PlusId_Path(sv_plusIdSeenFile->current.string, path, sizeof(path));
 	PlusId_ReadSeen(path, list);
 	for ( size_t k = 0; k < list.size(); k++ )
 	{
@@ -336,6 +365,7 @@ void PlusId_ClientDropped(int clientNum)
 		PlusId_Save();
 	}
 	plusIds[clientNum][0] = '\0';
+	plusFlags[clientNum] = 0;
 	slots[clientNum].unsaved = 0;
 }
 
@@ -352,6 +382,13 @@ int PlusId_FirstSeenAgo(int clientNum)
 const char *PlusId_ForClient(int clientNum)
 {
 	return plusIds[clientNum];
+}
+
+const char *PlusId_FlagsForClient(int clientNum)
+{
+	static const char *names[] = { "", "guid", "ip", "guid,ip" };
+
+	return names[plusFlags[clientNum] & 3];
 }
 
 void PlusId_RegisterDvars()
@@ -373,6 +410,330 @@ void PlusId_SpawnServer()
 	warned = true;
 }
 
+// Local bans (docs/architecture/plus-id.md): plusid_bans.json in fs_homepath,
+// {"format":1,"entries":[{id, reason, by, evidence, date, expires, guid, ip}]}
+// with date and expires in Unix seconds (expires null: permanent). The file
+// is read again when its size or time changed, so an edit is applied at the
+// next connect; it is read as hostile.
+
+#define PLUSID_FLAG_GUID 1
+#define PLUSID_FLAG_IP 2
+#define PLUSID_MAX_BANS 100000
+#define PLUSID_MAX_BANS_BYTES ( 4 * 1024 * 1024 )
+
+static std::vector<PlusIdBan> localBans;
+static long long bansSize = -1, bansTime;
+
+static bool PlusId_ValidId(const char *id)
+{
+	if ( strlen(id) != 21 || id[0] != 'P' || id[1] != '-' )
+		return false;
+	for ( int i = 2; i < 21; i++ )
+	{
+		if ( i % 5 == 1 ? id[i] != '-' : !( ( id[i] >= 'A' && id[i] <= 'Z' ) || ( id[i] >= '2' && id[i] <= '7' ) ) )
+			return false;
+	}
+	return true;
+}
+
+static bool PlusId_ValidIp(const char *ip)
+{
+	int a, b, c, d, n = 0;
+
+	return !*ip || ( strlen(ip) < 16 && strspn(ip, "0123456789.") == strlen(ip) && sscanf(ip, "%3d.%3d.%3d.%3d%n", &a, &b, &c, &d, &n) == 4
+	                 && !ip[n] && (unsigned)a < 256 && (unsigned)b < 256 && (unsigned)c < 256 && (unsigned)d < 256 );
+}
+
+// text from the file or rcon into a field: cut to size, control characters
+// (the \x15 that localizes an error, line breaks) as spaces
+static void PlusId_CopyText(char *to, size_t size, const char *from)
+{
+	Q_strncpyz(to, from, size);
+	for ( char *p = to; *p; p++ )
+	{
+		if ( (unsigned char)*p < 32 )
+			*p = ' ';
+	}
+}
+
+// a string field that must be absent or shorter than size
+static bool PlusId_JsonText(yyjson_val *obj, const char *key, char *to, size_t size)
+{
+	yyjson_val *v = yyjson_obj_get(obj, key);
+
+	to[0] = '\0';
+	if ( !v )
+		return true;
+	if ( !yyjson_is_str(v) || yyjson_get_len(v) >= size )
+		return false;
+	PlusId_CopyText(to, size, yyjson_get_str(v));
+	return true;
+}
+
+// absent or null is 0
+static bool PlusId_JsonNumber(yyjson_val *obj, const char *key, long long *to, long long min, long long max)
+{
+	yyjson_val *v = yyjson_obj_get(obj, key);
+
+	*to = 0;
+	if ( !v || yyjson_is_null(v) )
+		return true;
+	if ( !yyjson_is_int(v) || yyjson_get_sint(v) < min || yyjson_get_sint(v) > max )
+		return false;
+	*to = yyjson_get_sint(v);
+	return true;
+}
+
+static bool PlusId_StatBans(const char *path, long long *size, long long *mtime)
+{
+	struct stat st;
+
+	if ( stat(path, &st) )
+		return false;
+	*size = st.st_size;
+	*mtime = st.st_mtime;
+	return true;
+}
+
+// reads the file when it changed; one that is missing is an empty list, one
+// that does not parse keeps the last good list and is logged once
+static void PlusId_LoadBans()
+{
+	char path[MAX_OSPATH * 2];
+	long long size, mtime;
+
+	PlusId_Path("plusid_bans.json", path, sizeof(path));
+	if ( !PlusId_StatBans(path, &size, &mtime) )
+	{
+		size = -1;
+		mtime = 0;
+	}
+	if ( size == bansSize && mtime == bansTime )
+		return;
+	bansSize = size;
+	bansTime = mtime;
+	if ( size < 0 )
+	{
+		localBans.clear();
+		return;
+	}
+
+	std::vector<PlusIdBan> list;
+	yyjson_doc *doc = size <= PLUSID_MAX_BANS_BYTES ? yyjson_read_file(path, 0, NULL, NULL) : NULL;
+	yyjson_val *entries = doc ? yyjson_obj_get(yyjson_doc_get_root(doc), "entries") : NULL;
+	bool ok = yyjson_is_arr(entries) && yyjson_arr_size(entries) <= PLUSID_MAX_BANS;
+	size_t i, max;
+	yyjson_val *e;
+
+	yyjson_arr_foreach(entries, i, max, e)
+	{
+		PlusIdBan ban;
+		yyjson_val *id = yyjson_obj_get(e, "id");
+		long long guid;
+
+		memset(&ban, 0, sizeof(ban));
+		ok = ok && yyjson_is_obj(e) && yyjson_is_str(id) && PlusId_ValidId(yyjson_get_str(id))
+		     && PlusId_JsonText(e, "reason", ban.reason, sizeof(ban.reason)) && PlusId_JsonText(e, "by", ban.by, sizeof(ban.by))
+		     && PlusId_JsonText(e, "evidence", ban.evidence, sizeof(ban.evidence)) && PlusId_JsonText(e, "ip", ban.ip, sizeof(ban.ip))
+		     && PlusId_ValidIp(ban.ip) && PlusId_JsonNumber(e, "date", &ban.date, 0, LLONG_MAX)
+		     && PlusId_JsonNumber(e, "expires", &ban.expires, 0, LLONG_MAX) && PlusId_JsonNumber(e, "guid", &guid, INT_MIN, INT_MAX);
+		if ( !ok )
+			break;
+		ban.guid = (int)guid;
+		strcpy(ban.id, yyjson_get_str(id));
+		list.push_back(ban);
+	}
+	yyjson_doc_free(doc);
+
+	if ( ok )
+		localBans.swap(list);
+	else
+		Com_Printf("plusid: cannot read %s, keeping the bans in memory\n", path);
+}
+
+static bool PlusId_WriteBans()
+{
+	char path[MAX_OSPATH * 2], tmp[MAX_OSPATH * 2 + 24];
+	yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+	yyjson_mut_val *root = yyjson_mut_obj(doc), *entries = yyjson_mut_arr(doc);
+
+	yyjson_mut_doc_set_root(doc, root);
+	yyjson_mut_obj_add_int(doc, root, "format", 1);
+	yyjson_mut_obj_add_val(doc, root, "entries", entries);
+	for ( size_t k = 0; k < localBans.size(); k++ )
+	{
+		const PlusIdBan &b = localBans[k];
+		yyjson_mut_val *e = yyjson_mut_arr_add_obj(doc, entries);
+
+		yyjson_mut_obj_add_strcpy(doc, e, "id", b.id);
+		yyjson_mut_obj_add_strcpy(doc, e, "reason", b.reason);
+		yyjson_mut_obj_add_strcpy(doc, e, "by", b.by);
+		yyjson_mut_obj_add_strcpy(doc, e, "evidence", b.evidence);
+		yyjson_mut_obj_add_sint(doc, e, "date", b.date);
+		if ( b.expires )
+			yyjson_mut_obj_add_sint(doc, e, "expires", b.expires);
+		else
+			yyjson_mut_obj_add_null(doc, e, "expires");
+		yyjson_mut_obj_add_int(doc, e, "guid", b.guid);
+		yyjson_mut_obj_add_strcpy(doc, e, "ip", b.ip);
+	}
+
+	size_t length = 0;
+	char *text = yyjson_mut_write(doc, YYJSON_WRITE_PRETTY, &length);
+	PlusId_Path("plusid_bans.json", path, sizeof(path));
+	Com_sprintf(tmp, sizeof(tmp), "%s.tmp.%d", path, (int)getpid());
+	FILE *f = text ? fopen(tmp, "wb") : NULL;
+	bool ok = f != NULL;
+	ok = ok && fwrite(text, 1, length, f) == length;
+	ok = f && fclose(f) == 0 && ok;
+	ok = ok && PlusId_Replace(tmp, path);
+	free(text);
+	yyjson_mut_doc_free(doc);
+	if ( ok )
+		PlusId_StatBans(path, &bansSize, &bansTime);
+	else
+		Com_Printf("plusid: cannot write %s, the ban was not saved\n", path);
+	return ok;
+}
+
+const PlusIdBan *PlusId_FindBan(const char *id, const char **listName)
+{
+	long long now = time(NULL);
+
+	// the shared lists (not there yet) would come after the local bans
+	if ( listName )
+		*listName = NULL;
+	PlusId_LoadBans();
+	for ( size_t k = 0; k < localBans.size(); k++ )
+	{
+		if ( !strcmp(localBans[k].id, id) && ( !localBans[k].expires || localBans[k].expires > now ) )
+			return &localBans[k];
+	}
+	return NULL;
+}
+
+// the marks a player gets for matching a live local ban of another ID by guid or by IP
+static int PlusId_EvasionFlags(const char *id, netadr_t from, int guid)
+{
+	static const char *how[] = { "", "guid", "ip", "guid,ip" };
+	const char *ip = NET_AdrToStringNoPort(from);
+	long long now = time(NULL);
+	int flags = 0;
+
+	PlusId_LoadBans();
+	for ( size_t k = 0; k < localBans.size(); k++ )
+	{
+		const PlusIdBan &b = localBans[k];
+		int match = ( guid && b.guid == guid ? PLUSID_FLAG_GUID : 0 ) | ( b.ip[0] && !strcmp(b.ip, ip) ? PLUSID_FLAG_IP : 0 );
+
+		if ( !match || strcmp(b.id, id) == 0 || ( b.expires && b.expires <= now ) )
+			continue;
+		Com_Printf("plusid: possible evasion %s matches %s by %s\n", id, b.id, how[match]);
+		flags |= match;
+	}
+	return flags;
+}
+
+// drops the connected players whose ID is banned
+void PlusId_KickBanned()
+{
+	for ( int i = 0; i < sv_maxclients->current.integer; i++ )
+	{
+		client_t *cl = &svs.clients[i];
+		const PlusIdBan *ban;
+
+		if ( cl->state >= CS_CONNECTED && plusIds[i][0] && ( ban = PlusId_FindBan(plusIds[i], NULL) ) )
+		{
+			Com_Printf("plusid: dropping banned %s (%s)\n", plusIds[i], cl->name);
+			SV_DropClient(cl, va("You are banned from this server: %s", ban->reason));
+		}
+	}
+}
+
+static void PlusId_Unlist(const char *id)
+{
+	for ( size_t k = localBans.size(); k-- > 0; )
+	{
+		if ( !strcmp(localBans[k].id, id) )
+			localBans.erase(localBans.begin() + k);
+	}
+}
+
+static void PlusId_Ban_f()
+{
+	PlusIdBan ban;
+	const char *who = Cmd_Argv(1), *minutes = Cmd_Argv(2);
+
+	if ( !com_sv_running->current.boolean || Cmd_Argc() < 3 || !*minutes || strspn(minutes, "0123456789") != strlen(minutes) || strlen(minutes) > 7 )
+	{
+		Com_Printf("Usage: banPlusId <id|clientnum> <minutes, 0 permanent> <reason...>\n");
+		return;
+	}
+
+	memset(&ban, 0, sizeof(ban));
+	ban.date = time(NULL);
+	ban.expires = atoi(minutes) ? ban.date + atoi(minutes) * 60LL : 0;
+	PlusId_CopyText(ban.reason, sizeof(ban.reason), Cmd_Argc() > 3 ? Cmd_Args(3) : "banned");
+	strcpy(ban.by, "rcon");
+
+	if ( *who && strspn(who, "0123456789") == strlen(who) )
+	{
+		int num = atoi(who);
+
+		if ( strlen(who) > 3 || num >= sv_maxclients->current.integer || svs.clients[num].state < CS_CONNECTED || !plusIds[num][0] )
+		{
+			Com_Printf("Client %s is not connected or has no Plus ID\n", who);
+			return;
+		}
+		strcpy(ban.id, plusIds[num]);
+		ban.guid = svs.clients[num].guid;
+		Q_strncpyz(ban.ip, NET_AdrToStringNoPort(svs.clients[num].netchan.remoteAddress), sizeof(ban.ip));
+		if ( !PlusId_ValidIp(ban.ip) )
+			ban.ip[0] = '\0';
+	}
+	else if ( PlusId_ValidId(who) )
+		strcpy(ban.id, who);
+	else
+	{
+		Com_Printf("%s is not a Plus ID (P-XXXX-XXXX-XXXX-XXXX) or a client number\n", who);
+		return;
+	}
+
+	// a new ban of an ID replaces the old one
+	PlusId_LoadBans();
+	std::vector<PlusIdBan> before = localBans;
+	PlusId_Unlist(ban.id);
+	localBans.push_back(ban);
+	if ( !PlusId_WriteBans() )
+	{
+		localBans = before;
+		return;
+	}
+	Com_Printf("Banned %s\n", ban.id);
+	PlusId_KickBanned();
+}
+
+static void PlusId_Unban_f()
+{
+	const char *id = Cmd_Argv(1);
+
+	if ( !PlusId_ValidId(id) )
+	{
+		Com_Printf("Usage: unbanPlusId <id>\n");
+		return;
+	}
+
+	PlusId_LoadBans();
+	std::vector<PlusIdBan> before = localBans;
+	PlusId_Unlist(id);
+	if ( localBans.size() == before.size() )
+		Com_Printf("%s is not banned\n", id);
+	else if ( !PlusId_WriteBans() )
+		localBans = before;
+	else
+		Com_Printf("Unbanned %s\n", id);
+}
+
 static void PlusId_Status_f()
 {
 	if ( !com_sv_running->current.boolean )
@@ -382,17 +743,20 @@ static void PlusId_Status_f()
 	}
 
 	PlusId_Tick();
-	Com_Printf("num name id playtime first_seen_ago\n");
+	Com_Printf("num name id playtime first_seen_ago flags\n");
 	for ( int i = 0; i < sv_maxclients->current.integer; i++ )
 	{
 		if ( svs.clients[i].state >= CS_CONNECTED )
-			Com_Printf("%i %s %s %i %i\n", i, svs.clients[i].name, plusIds[i][0] ? plusIds[i] : "-", PlusId_Playtime(i), PlusId_FirstSeenAgo(i));
+			Com_Printf("%i %s %s %i %i %s\n", i, svs.clients[i].name, plusIds[i][0] ? plusIds[i] : "-", PlusId_Playtime(i), PlusId_FirstSeenAgo(i),
+			           plusFlags[i] ? PlusId_FlagsForClient(i) : "-");
 	}
 }
 
 void PlusId_AddCommands()
 {
 	Cmd_AddCommand("plusIdStatus", PlusId_Status_f);
+	Cmd_AddCommand("banPlusId", PlusId_Ban_f);
+	Cmd_AddCommand("unbanPlusId", PlusId_Unban_f);
 }
 
 #endif

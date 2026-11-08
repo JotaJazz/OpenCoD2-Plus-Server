@@ -8,7 +8,7 @@ and the server's verdict is read back with rcon plusIdStatus. The folder must
 hold only the stock iwds. Exits with 0 when every check passes. The helpers
 (make_key, sign, connect_with_id...) are for the other Plus ID tests.
 """
-import argparse, base64, hashlib, os, re, secrets, subprocess, sys, tempfile, time, zipfile
+import argparse, base64, hashlib, json, os, re, secrets, subprocess, sys, tempfile, time, zipfile
 
 import cod2client, smoke_test
 
@@ -27,6 +27,7 @@ GAMETYPE = r"""main()
 connected()
 {
 	logPrint("plusid " + self getPlusId() + "\n");
+	logPrint("plusidflags " + self getPlusIdFlags() + "\n");
 	logPrint("plusidtime " + self getPlusIdPlaytime() + " " + self getPlusIdFirstSeen() + "\n");
 	self [[level.plusidConnect]]();
 }
@@ -122,10 +123,19 @@ def connect_with_id(port, priv, adr=None, name='plusid', protocol=115, plus=123)
 
 def status_rows(port):
     """{name: (id, playtime, first_seen_ago)} from rcon plusIdStatus, whose lines are
-    "num name id playtime first_seen_ago"."""
+    "num name id playtime first_seen_ago flags"."""
     lines = smoke_test.rcon(port, RCON, 'plusIdStatus').splitlines()
-    rows = (re.match(r'\s*\d+ (.*) (\S+) (\d+) (\d+)$', l) for l in lines[1:])
+    rows = (re.match(r'\s*\d+ (.*) (\S+) (\d+) (\d+) \S+$', l) for l in lines[1:])
     return {m.group(1): (m.group(2), int(m.group(3)), int(m.group(4))) for m in rows if m}
+
+
+def status_extra(port, name):
+    """(client number, flags) of a player in rcon plusIdStatus; flags is "-" for none."""
+    for l in smoke_test.rcon(port, RCON, 'plusIdStatus').splitlines()[1:]:
+        m = re.match(r'\s*(\d+) (.*) \S+ \d+ \d+ (\S+)$', l)
+        if m and m.group(2) == name:
+            return int(m.group(1)), m.group(3)
+    return None, None
 
 
 def status(port):
@@ -314,6 +324,74 @@ def run_cases(port, protocol, log_path, game_log, seen_path, check):
             client.close()
 
 
+def read_bans(path):
+    return json.load(open(path))['entries'] if os.path.exists(path) else []
+
+
+def run_ban_cases(port, protocol, log_path, game_log, bans_path, check):
+    clients = []
+
+    def join(name, priv):
+        client, reply = connect_with_id(port, priv, None, name, protocol)
+        clients.append(client)
+        return reply
+
+    def gone(name):
+        return smoke_test.wait_for(lambda: name not in status(port), 5)
+
+    try:
+        priv = make_key()
+        want = plus_id(public_key(priv))
+        join('byid', priv)
+        smoke_test.rcon(port, RCON, f'banPlusId {want} 0 cheating')
+        reply = join('byid', priv)
+        check('ban_by_id', gone('byid') and reply is not None and reply.startswith('error') and 'cheating' in reply
+              and 'byid' not in status(port), str(reply))
+        smoke_test.rcon(port, RCON, f'unbanPlusId {want}')
+        reply = join('byid', priv)
+        check('unban', reply is None and status(port).get('byid') == want and not read_bans(bans_path), str(reply))
+
+        priv = make_key()
+        want = plus_id(public_key(priv))
+        join('byslot', priv)
+        num, _ = status_extra(port, 'byslot')
+        smoke_test.rcon(port, RCON, f'banPlusId {num} 1 test')
+        entry = ([b for b in read_bans(bans_path) if b['id'] == want] or [{}])[0]
+        check('ban_by_slot', gone('byslot') and entry.get('ip') == '127.0.0.1' and 'guid' in entry
+              and entry.get('expires', 0) - entry.get('date', 0) == 60 and entry.get('by') == 'rcon' and entry.get('reason') == 'test', str(entry))
+
+        # edited by hand: the file is read again when its time changes
+        time.sleep(1.1)
+        bans = json.load(open(bans_path))
+        bans['entries'][0]['expires'] = int(time.time()) - 5
+        json.dump(bans, open(bans_path, 'w'))
+        reply = join('byslot', priv)
+        check('expiry', reply is None and status(port).get('byslot') == want, str(reply))
+        smoke_test.rcon(port, RCON, f'unbanPlusId {want}')
+
+        # a ban by slot keeps the IP, so another ID from it is marked and stays
+        priv = make_key()
+        join('banned', priv)
+        smoke_test.rcon(port, RCON, f'banPlusId {status_extra(port, "banned")[0]} 0 evasion')
+        priv2 = make_key()
+        reply = join('evader', priv2)
+        flags = status_extra(port, 'evader')[1]
+        logged = f'plusid: possible evasion {plus_id(public_key(priv2))} matches {plus_id(public_key(priv))} by ' in open(log_path, encoding='latin-1').read()
+        check('evasion_flag', reply is None and flags in ('ip', 'guid,ip') and logged
+              and smoke_test.wait_for(lambda: 'plusidflags ' + flags in smoke_test.log_lines(game_log)), f'{reply} {flags} {logged}')
+        check('no_flag_without_ban', status_extra(port, 'byslot')[1] in (None, '-'), str(status_extra(port, 'byslot')))
+
+        # a hostile file keeps the list in memory
+        time.sleep(1.1)
+        before = len(read_bans(bans_path))
+        open(bans_path, 'w').write('{"entries":[{"id":"nope"}]}')
+        out = smoke_test.rcon(port, RCON, 'unbanPlusId P-AAAA-AAAA-AAAA-AAAA')
+        check('bad_file', before == 1 and 'plusid: cannot read' in out, f'{before} {out}')
+    finally:
+        for client in clients:
+            client.close()
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('game_dir')
@@ -343,6 +421,8 @@ def main():
                       in open(log_path, encoding='latin-1').read())
                 run_cases(port, args.protocol, log_path, os.path.join(home, 'main', 'games_mp.log'),
                           os.path.join(home, 'plusid_seen.txt'), check)
+                run_ban_cases(port, args.protocol, log_path, os.path.join(home, 'main', 'games_mp.log'),
+                              os.path.join(home, 'plusid_bans.json'), check)
             check('the server still runs', server.poll() is None, f'exit code {server.poll()}')
         finally:
             stop(server)

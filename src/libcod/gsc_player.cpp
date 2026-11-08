@@ -1285,6 +1285,15 @@ void gsc_player_getplusid(scr_entref_t id)
 	stackPushString(PlusId_ForClient(id.entnum));
 }
 
+// "guid", "ip" or "guid,ip" when this player matches a live local ban of another ID, "" otherwise
+void gsc_player_getplusidflags(scr_entref_t id)
+{
+	if (!gsc_player_isclient(id, "gsc_player_getplusidflags"))
+		return;
+
+	stackPushString(PlusId_FlagsForClient(id.entnum));
+}
+
 // Seconds this ID has played on the servers that share the seen file, 0 without one
 void gsc_player_getplusidplaytime(scr_entref_t id)
 {
