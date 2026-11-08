@@ -9,6 +9,7 @@ rejected and what is left open; for what changed in detail see
 
 - The grouped script errors kept a count that only printed with the next repeat, so the last 10 s of an error that stopped never showed. The count now prints from `Scr_PlusFlushRuntimeErrors`, each server frame, and a message quiet for a whole window prints in full again; `error_repeats` waits for that third block.
 - The Windows launcher takes the config as a second argument (`iniciar_cod2rev.bat internet 20hz.cfg`). Without quotes: the 32-bit Windows server read `+exec "t.cfg"` as a bad `exec` and printed its usage; `+exec t.cfg` runs it.
+- The head held over standing for 450–700 ms on the way down is the stock blend, which the client draws too: `BG_SetNewAnimation` gives a stance change at least 400 ms (`stanceTransitionTime`) in both the server and OpenCoD2-Plus's own client code (its `PC/bgame/bg_animation_mp.c`), and XAnim moves a weight to its goal linearly in time on both sides. The hitboxes trail what a client sees only by its snapshot delay, which the antilag rewinds; the debt entry is gone. Not measured with a rendering client; the only difference seen is the weight floor (`FLT_EPSILON` here, `1e-6` in the client), below any visible weight.
 
 ## 2026-11-08 — the antilag rewinds the stance's animation
 
