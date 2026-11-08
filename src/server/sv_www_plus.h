@@ -15,6 +15,10 @@ bool SV_WwwPlus_IsAuto(void);
 bool SV_WwwPlus_Grant(netadr_t adr, const char *downloadName, int size);
 // For the worker: a live grant of this IP and exactly this name
 bool SV_WwwPlus_FindGrant(uint32_t ip, const char *name, char *ospath, int ospathSize, int *size);
+// The listener on net_ip:the game port and its worker thread; Start only with sv_wwwBaseURL auto
+void SV_WwwPlus_Start(void);
+void SV_WwwPlus_Stop(void);
+// Copies the limits for the worker and prints its log lines
 void SV_WwwPlus_Frame(void);
 
 #endif

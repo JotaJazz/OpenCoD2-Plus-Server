@@ -1,4 +1,7 @@
 #include "../qcommon/qcommon.h"
+#if defined(COD2_PLUS) && !defined(_WIN32)
+#include "sv_www_plus.h"
+#endif
 
 serverStatic_t svs;
 server_t sv;
@@ -756,6 +759,10 @@ void SV_Shutdown( const char *finalmsg )
 
 	Com_Printf("----- Server Shutdown -----\n");
 
+#if defined(COD2_PLUS) && !defined(_WIN32)
+	SV_WwwPlus_Stop();
+#endif
+
 	bLoading = sv.state == SS_LOADING;
 
 	if ( svs.clients )
@@ -898,6 +905,11 @@ void SV_SpawnServer( char *server )
 	client_t *cl;
 	int checksum;
 	int i;
+
+#if defined(COD2_PLUS) && !defined(_WIN32)
+	// the network is up by now; a no-op once the listener runs
+	SV_WwwPlus_Start();
+#endif
 
 	Scr_ParseGameTypeList();
 	SV_SetGametype();

@@ -6,7 +6,7 @@
 A minimal Plus client asks for mod iwds and the redirect it gets is checked;
 the folder must hold only the stock iwds. Exits with 0 when every check passes.
 """
-import argparse, os, secrets, subprocess, sys, tempfile, zipfile
+import argparse, os, re, secrets, socket, subprocess, sys, tempfile, threading, time, zipfile
 
 import cod2client, smoke_test
 
@@ -27,6 +27,166 @@ def ask(port, server_id, name):
         return reply, client.redirects
     finally:
         client.close()
+
+
+def http(port, request, source='127.0.0.1', timeout=15.0):
+    """Sends a raw request over TCP and returns all the server sent, or None if refused."""
+    try:
+        s = socket.create_connection(('127.0.0.1', port), timeout, source_address=(source, 0))
+    except OSError:
+        return None
+    with s:
+        try:
+            s.sendall(request)
+            data = b''
+            while True:
+                chunk = s.recv(65536)
+                if not chunk:
+                    return data
+                data += chunk
+        except OSError:
+            return data
+
+
+def get(port, path, method='GET', source='127.0.0.1'):
+    """Returns (status, headers dict, body) of a request for path; status None if no reply."""
+    data = http(port, f'{method} {path} HTTP/1.1\r\nHost: x\r\n\r\n'.encode(), source)
+    if not data or b'\r\n\r\n' not in data:
+        return None, {}, data
+    head, body = data.split(b'\r\n\r\n', 1)
+    lines = head.decode('latin-1').split('\r\n')
+    headers = dict(l.split(': ', 1) for l in lines[1:] if ': ' in l)
+    return int(lines[0].split(' ')[1]), headers, body
+
+
+def open_get(port, path):
+    s = socket.create_connection(('127.0.0.1', port), 5)
+    s.sendall(f'GET {path} HTTP/1.1\r\nHost: x\r\n\r\n'.encode())
+    return s
+
+
+def read_all(s, rate=None):
+    """Reads s to its end, at rate bytes a second if given; returns the bytes."""
+    data, start = b'', time.monotonic()
+    s.settimeout(40)
+    while True:
+        if rate:
+            ahead = len(data) / rate - (time.monotonic() - start)
+            if ahead > 0:
+                time.sleep(ahead)
+        try:
+            chunk = s.recv(8192)
+        except OSError:
+            return data
+        if not chunk:
+            return data
+        data += chunk
+
+
+def closed_within(s, seconds):
+    """True if the server closes s (EOF or reset) within seconds."""
+    s.settimeout(seconds)
+    try:
+        while s.recv(65536):
+            pass
+        return True
+    except socket.timeout:
+        return False
+    except OSError:
+        return True
+
+
+def server_id(port):
+    return int(re.search(r'"sv_serverid" is: ?"(-?\d+)', smoke_test.rcon(port, RCON, 'sv_serverid')).group(1))
+
+
+def check_http(port, sid, data, check):
+    status, headers, body = get(port, '/' + MOD)
+    check('http get', status == 200 and headers.get('Content-Length') == str(len(data))
+          and headers.get('Connection') == 'close' and body == data, f'{status} {headers} {len(body or b"")}')
+    status, headers, body = get(port, '/' + MOD, 'HEAD')
+    check('http head', status == 200 and headers.get('Content-Length') == str(len(data)) and body == b'',
+          f'{status} {headers} {len(body or b"")}')
+    for path in ('/main/zz_svr_www.iwd', '/main/iw_00.iwd'):
+        status = get(port, path)[0]
+        check('no grant ' + path, status == 404, str(status))
+    status = get(port, '/' + MOD, source='127.0.0.2')[0]
+    check('no grant other ip', status == 404, str(status))
+    for path in ('/main//zz_www_plus.iwd', '/main/%2e%2e/main/zz_www_plus.iwd', '/main/zz_www_plus.iwd?x',
+                 '/../main/zz_www_plus.iwd', '//main/zz_www_plus.iwd', '/main/zz_www_plus.iwd%00',
+                 '/main/zz_www_plus.iwd#', '/main/zz_www_plus.iwd%'):
+        status = get(port, path)[0]
+        check('paths ' + path, status == 404, str(status))
+    status, _, body = get(port, '/main/zz_www%5Fplus.iwd')
+    check('paths percent-decoded', status == 200 and body == data, str(status))
+    status = get(port, '/' + MOD, 'POST')[0]
+    check('method POST', status == 405, str(status))
+    reply = http(port, b'GET /' + MOD.encode() + b' HTTP/1.1\r\n' + b'X-Pad: ' + b'a' * 5000 + b'\r\n\r\n')
+    check('head over 4 KB', reply == b'', repr((reply or b'')[:40]))
+
+    start = time.monotonic()
+    s = socket.create_connection(('127.0.0.1', port), 5)
+    closed = closed_within(s, 15)
+    took = time.monotonic() - start
+    s.close()
+    check('slow client', closed and 9 <= took <= 12, f'{took:.1f} s')
+    start = time.monotonic()
+    s = socket.create_connection(('127.0.0.1', port), 5)
+    closed = False
+    try:
+        while not closed and time.monotonic() - start < 15:
+            s.send(b'G')
+            closed = closed_within(s, 1)
+    except OSError:
+        closed = True
+    took = time.monotonic() - start
+    s.close()
+    check('one byte a second', closed and 9 <= took <= 12, f'{took:.1f} s')
+
+    # the connection cap with room per IP, then the per-IP cap with room in all
+    for name, settings in (('connection cap', ('sv_wwwMaxConnections 2', 'sv_wwwMaxPerIP 8')),
+                           ('per ip cap', ('sv_wwwMaxConnections 4', 'sv_wwwMaxPerIP 2'))):
+        for setting in settings:
+            smoke_test.rcon(port, RCON, 'set ' + setting)
+        time.sleep(0.3)
+        slow = [open_get(port, '/' + MOD) for _ in range(2)]
+        time.sleep(0.3)
+        third = socket.create_connection(('127.0.0.1', port), 5)
+        start = time.monotonic()
+        closed = closed_within(third, 3)
+        took = time.monotonic() - start
+        third.close()
+        for s in slow:
+            s.close()
+        check(name, closed and took < 1, f'{took:.1f} s')
+    time.sleep(0.5)
+
+    smoke_test.rcon(port, RCON, 'set sv_wwwMaxRate 256')
+    time.sleep(0.5)
+    start = time.monotonic()
+    status, _, body = get(port, '/' + MOD)
+    took = time.monotonic() - start
+    check('rate cap', status == 200 and body == data and 3.5 <= took <= 5, f'{took:.1f} s')
+    smoke_test.rcon(port, RCON, 'set sv_wwwMaxRate 1024')
+    time.sleep(0.3)
+
+    s = open_get(port, '/' + MOD)
+    got = []
+    reader = threading.Thread(target=lambda: got.append(read_all(s, 64 * 1024)))
+    reader.start()
+    time.sleep(2)
+    smoke_test.rcon(port, RCON, 'map_restart')
+    smoke_test.wait_for(lambda: smoke_test.query(port, 'getinfo x'), 60)
+    smoke_test.rcon(port, RCON, 'map mp_toujane')
+    smoke_test.wait_for(lambda: smoke_test.query(port, 'getinfo x'), 60)
+    reader.join(60)
+    s.close()
+    body = got[0].split(b'\r\n\r\n', 1)[-1] if got else b''
+    check('map change transfer', body == data, f'{len(body)} of {len(data)} bytes')
+    sid = server_id(port)
+    reply, red = ask(port, sid, MOD)
+    status, _, body = get(port, '/' + MOD)
+    check('map change new get', len(red) == 1 and status == 200 and body == data, f'{red} {status}')
 
 
 def main():
@@ -50,8 +210,9 @@ def main():
         with zipfile.ZipFile(os.path.join(home, 'main', 'zz_svr_www.iwd'), 'w') as z:
             z.writestr('www/svr.txt', 'server only\n')
         size = os.path.getsize(os.path.join(home, MOD))
+        data = open(os.path.join(home, MOD), 'rb').read()
         command = [os.path.abspath(args.binary), '+set', 'fs_basepath', os.path.abspath(args.game_dir),
-                   '+set', 'fs_homepath', home, '+set', 'net_port', str(port), '+set', 'sv_cracked', '1',
+                   '+set', 'fs_homepath', home, '+set', 'net_ip', '127.0.0.1', '+set', 'net_port', str(port), '+set', 'sv_cracked', '1',
                    '+set', 'rcon_password', RCON, '+set', 'dedicated', '1', '+set', 'sv_wwwDownload', '1',
                    '+set', 'sv_wwwBaseURL', 'auto', '+map', args.map]
         log_path = os.path.join(home, 'out.log')
@@ -62,9 +223,7 @@ def main():
             up = server.poll() is None and smoke_test.query(port, 'getinfo x') is not None
             check('the server runs the map', up)
             if up:
-                import re
-                m = re.search(r'"sv_serverid" is: ?"(-?\d+)', smoke_test.rcon(port, RCON, 'sv_serverid'))
-                sid = int(m.group(1))
+                sid = server_id(port)
                 reply, red = ask(port, sid, MOD)
                 check('plus redirect', red == [{'url': 'plus:' + MOD, 'flags': 0, 'size': size}] and b'PK' not in reply, str(red))
                 for name in ('main/zz_svr_www.iwd', 'main/iw_00.iwd'):
@@ -78,7 +237,21 @@ def main():
                 smoke_test.rcon(port, RCON, 'set sv_wwwDlDisconnected 1')
                 reply, red = ask(port, sid, MOD)
                 check('disconnected flag', [r['flags'] for r in red] == [1], str(red))
+                smoke_test.rcon(port, RCON, 'set sv_wwwDlDisconnected 0')
+                check_http(port, sid, data, check)
             check('the server still runs', server.poll() is None, f'exit code {server.poll()}')
+            if up:
+                logged = re.findall(r'www: 127\.0\.0\.1 main/zz_www_plus\.iwd \d+ bytes in [\d.]+ s', open(log_path, encoding='latin-1').read())
+                check('download logged', len(logged) >= 4, str(len(logged)))
+                # quit joins the worker, with a transfer open
+                stuck = open_get(port, '/' + MOD)
+                smoke_test.rcon(port, RCON, 'quit')
+                try:
+                    server.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    pass
+                stuck.close()
+                check('quit with a transfer open', server.poll() is not None, f'exit code {server.poll()}')
         finally:
             if server.poll() is None:
                 server.terminate()
