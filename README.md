@@ -25,7 +25,7 @@ It is a fork of [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Serv
 - **Administration:** passwords kept out of the log, log naming, rotation and timestamps, a forced rate and snapshot rate, a configurable CD key authorization server, optional kick and timeout messages, map ambience switches and a clean shutdown on SIGTERM.
 - **Scripting (libcod):** most of [zk_libcod](https://github.com/ibuddieat/zk_libcod)'s script functions and callbacks, with the same names: script errors with file and line, button presses, rcon commands, player and weapon control, admin tools, waypoint graphs with A\*, what each player sees, hears and collides with, physics, JSON, SQLite, HTTP and WebSocket clients, sounds through voice chat and more, fixing several of its bugs on the way.
 - **Bots mod:** `mods/bots`, bots that find their way over waypoint graphs, use sights, grenades and knives, and play the SD, CTF and HQ objectives.
-- **CoD2 1.3 Plus (in development):** `make PLUS=1` builds a server only for the Plus client, with a handshake that tells other clients to update and smaller snapshots, on the way to 40–60 Hz. Every other build keeps the original network format.
+- **CoD2 1.3 Plus (in development):** `make PLUS=1` builds a server only for the Plus client, with a handshake that tells other clients to update and smaller snapshots, on the way to 40–60 Hz. Every other build keeps the original network format. See [what Plus adds](#cod2-13-plus-what-it-adds).
 - **Tests:** a smoke test with a minimal client that reads the server's snapshots, a bots test that plays real maps, and an HTTP and WebSocket test.
 
 It also runs the local games of [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), a rebuilt CoD2 client. Every change in detail, with its functions, variables and fixes, is in [docs/CHANGES.md](docs/CHANGES.md).
@@ -35,6 +35,30 @@ It also runs the local games of [OpenCoD2-Plus](https://github.com/JotaJazz/Open
 
 > [!IMPORTANT]
 > **No game files are included.** This repository is source code only. The server needs the `main` folder with the `.iwd` files from a copy of Call of Duty 2 that **you own**.
+
+## CoD2 1.3 Plus: what it adds
+
+A server built with `make PLUS=1` plays only with the [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus) client, and in exchange it can change what the original game never could: the tick rate, the network format and rules the client predicts. Every other build stays the original server.
+
+| | What changes | Why it matters |
+| --- | --- | --- |
+| **20, 40 and 60 Hz** | `sv_fps` alone sets the rate: every Plus client gets a snapshot each frame and the bandwidth for it. Turrets, `trigger_hurt`, script `wait`, the killcam and the antilag keep their timing at any rate. | Smoother aim and movement, with no client settings to get right and no mod that runs faster at 60 Hz. |
+| **Antilag that rewinds the whole player** | A shot is checked against where the target was when you fired: its position, and also its lean, yaw, aim, stance and the animation of crouching or going prone. | "I hit him and it didn't count" goes away for players who leaned out or ducked a moment ago. |
+| **Fixes the client predicts** | Fast reload, prone peek, MG clip and the climbing sound, fixed in the game itself instead of in mod scripts that fight the client. | The same rules for everyone, without `zPAM` workarounds. Mods detect them with `getCvarInt("sv_plus") >= 123`. |
+| **Smaller snapshots** | Entity times travel as a short offset. | About 12% less traffic per client. |
+| **Downloads from the server itself** | On a Linux server with `sv_wwwBaseURL auto`, a Plus client that lacks a mod downloads it over HTTP from the game port. Only the redirected player can fetch only that file, at a capped rate. | No web server to set up and nothing to upload: open the game port to TCP too, and the mod downloads at full speed. Other clients keep the URL you give them. |
+| **Fairer votes** | A player who leaves and joins again keeps the vote they cast and the votes they called. | Nobody votes twice in the same vote. |
+| **A clear message for everyone else** | A stock 1.3 or CoD2x player who tries to join is told to get the Plus client, with a link (`sv_plusNotice`). The server still shows up in every browser as 1.3. | Nobody is left wondering why they cannot connect. |
+
+A 60 Hz Plus server with its own downloads needs only this in its `server.cfg`:
+
+```cfg
+set sv_fps 60
+set sv_wwwDownload 1
+set sv_wwwBaseURL auto
+```
+
+The protocol, its measurements and the server's side of each rule are in [docs/architecture/plus-protocol.md](docs/architecture/plus-protocol.md).
 
 ## How to run
 

@@ -25,7 +25,7 @@ C'est un fork de [voron00/CoD2rev_Server](https://github.com/voron00/CoD2rev_Ser
 - **Administration :** mots de passe absents du log, nom, rotation et horodatage du log, rate et snapshots imposés, serveur d'autorisation de clé CD configurable, messages de kick et de timeout optionnels, des réglages de l'ambiance des cartes et un arrêt propre sur SIGTERM.
 - **Scripts (libcod) :** la plupart des fonctions et callbacks de script de [zk_libcod](https://github.com/ibuddieat/zk_libcod), sous les mêmes noms : erreurs de script avec fichier et ligne, appuis sur les boutons, commandes rcon, contrôle des joueurs et des armes, outils d'administration, graphes de waypoints avec A\*, ce que chaque joueur voit, entend et ce qu'il percute, la physique, JSON, SQLite, des clients HTTP et WebSocket, des sons par le chat vocal et plus, en corrigeant plusieurs de ses bugs au passage.
 - **Mod de bots :** `mods/bots`, des bots qui se repèrent avec des graphes de waypoints, utilisent la visée, les grenades et le couteau, et jouent les objectifs de SD, de CTF et de HQ.
-- **CoD2 1.3 Plus (en développement) :** `make PLUS=1` compile un serveur réservé au client Plus, avec une négociation de connexion qui demande aux autres clients de se mettre à jour et des snapshots plus petits, en route vers 40–60 Hz. Toutes les autres compilations gardent le format réseau d'origine.
+- **CoD2 1.3 Plus (en développement) :** `make PLUS=1` compile un serveur réservé au client Plus, avec une négociation de connexion qui demande aux autres clients de se mettre à jour et des snapshots plus petits, en route vers 40–60 Hz. Toutes les autres compilations gardent le format réseau d'origine. Voir [ce qu'apporte Plus](#cod2-13-plus--ce-quil-apporte).
 - **Tests :** un smoke test avec un client minimal qui lit les snapshots du serveur, un test de bots qui joue de vraies cartes, et un test HTTP et WebSocket.
 
 Il fait aussi tourner les parties locales d'[OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus), un client CoD2 reconstruit. Chaque changement en détail, avec ses fonctions, variables et corrections, se trouve dans [docs/CHANGES.md](docs/CHANGES.md) (en anglais).
@@ -35,6 +35,30 @@ Il fait aussi tourner les parties locales d'[OpenCoD2-Plus](https://github.com/J
 
 > [!IMPORTANT]
 > **Aucun fichier du jeu n'est inclus.** Ce dépôt ne contient que du code source. Le serveur a besoin du dossier `main` avec les fichiers `.iwd` d'une copie de Call of Duty 2 que **vous possédez**.
+
+## CoD2 1.3 Plus : ce qu'il apporte
+
+Un serveur compilé avec `make PLUS=1` ne joue qu'avec le client [OpenCoD2-Plus](https://github.com/JotaJazz/OpenCoD2-Plus) et, en échange, peut changer ce que le jeu original n'a jamais pu : la fréquence du serveur, le format réseau et des règles que le client prédit. Les autres builds restent le serveur original.
+
+| | Ce qui change | Pourquoi c'est important |
+| --- | --- | --- |
+| **20, 40 et 60 Hz** | `sv_fps` fixe seul la fréquence : chaque client Plus reçoit un snapshot par frame et la bande passante qu'il faut. Les tourelles, `trigger_hurt`, le `wait` des scripts, la killcam et l'antilag gardent leur rythme à toute fréquence. | Une visée et des déplacements plus fluides, sans réglage à trouver côté client et sans mod qui va plus vite à 60 Hz. |
+| **Un antilag qui remonte tout le joueur** | Un tir est vérifié contre là où était la cible quand vous avez tiré : sa position, mais aussi son penché, son orientation, sa visée, sa posture et l'animation pour s'accroupir ou se coucher. | Fini le « je l'ai touché et ça n'a pas compté » sur un joueur qui s'est penché ou baissé un instant plus tôt. |
+| **Des corrections que le client prédit** | Rechargement rapide, prone peek, MG clip et le son d'escalade, corrigés dans le jeu lui-même plutôt que dans des scripts de mods qui se battent avec le client. | Les mêmes règles pour tous, sans les contournements de `zPAM`. Les mods les détectent avec `getCvarInt("sv_plus") >= 123`. |
+| **Des snapshots plus petits** | Les temps des entités voyagent sous forme d'un court décalage. | Environ 12 % de trafic en moins par client. |
+| **Des téléchargements depuis le serveur lui-même** | Sur un serveur Linux avec `sv_wwwBaseURL auto`, un client Plus à qui il manque un mod le télécharge en HTTP sur le port du jeu. Seul le joueur redirigé peut récupérer ce seul fichier, à débit plafonné. | Aucun serveur web à installer ni rien à téléverser : ouvrez aussi le port du jeu en TCP, et le mod se télécharge à pleine vitesse. Les autres clients gardent l'URL que vous leur donnez. |
+| **Des votes plus justes** | Un joueur qui part et revient garde le vote qu'il a donné et les votes qu'il a lancés. | Personne ne vote deux fois au même vote. |
+| **Un message clair pour les autres** | Un joueur 1.3 d'origine ou CoD2x qui tente de se connecter est averti qu'il lui faut le client Plus, avec un lien (`sv_plusNotice`). Le serveur apparaît toujours comme 1.3 dans toutes les listes. | Personne ne se demande pourquoi il n'arrive pas à se connecter. |
+
+Un serveur Plus à 60 Hz avec ses propres téléchargements n'a besoin que de ceci dans son `server.cfg` :
+
+```cfg
+set sv_fps 60
+set sv_wwwDownload 1
+set sv_wwwBaseURL auto
+```
+
+Le protocole, ses mesures et la part du serveur dans chaque règle sont dans [docs/architecture/plus-protocol.md](docs/architecture/plus-protocol.md).
 
 ## Comment le lancer
 
