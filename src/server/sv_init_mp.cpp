@@ -65,6 +65,11 @@ dvar_t *com_expectedHunkUsage;
 dvar_t *sv_wwwDownload;
 dvar_t *sv_wwwBaseURL;
 dvar_t *sv_wwwDlDisconnected;
+#ifdef COD2_PLUS
+dvar_t *sv_wwwMaxRate;
+dvar_t *sv_wwwMaxConnections;
+dvar_t *sv_wwwMaxPerIP;
+#endif
 
 /*
 ===============
@@ -169,6 +174,12 @@ void SV_InitDvar()
 	sv_wwwDownload = Dvar_RegisterBool("sv_wwwDownload", false, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	sv_wwwBaseURL = Dvar_RegisterString("sv_wwwBaseURL", "", DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	sv_wwwDlDisconnected = Dvar_RegisterBool("sv_wwwDlDisconnected", false, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
+#ifdef COD2_PLUS
+	// the limits of the HTTP downloads of sv_wwwBaseURL auto (sv_www_plus.cpp)
+	sv_wwwMaxRate = Dvar_RegisterInt("sv_wwwMaxRate", 1024, 0, 1000000, DVAR_CHANGEABLE_RESET);
+	sv_wwwMaxConnections = Dvar_RegisterInt("sv_wwwMaxConnections", 4, 1, 64, DVAR_CHANGEABLE_RESET);
+	sv_wwwMaxPerIP = Dvar_RegisterInt("sv_wwwMaxPerIP", 2, 1, 64, DVAR_CHANGEABLE_RESET);
+#endif
 }
 
 /*

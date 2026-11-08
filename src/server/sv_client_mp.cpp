@@ -1,5 +1,8 @@
 #include "../qcommon/qcommon.h"
 #include "../qcommon/netchan.h"
+#if defined(COD2_PLUS) && !defined(_WIN32)
+#include "sv_www_plus.h"
+#endif
 
 /*
 =================
@@ -1392,6 +1395,21 @@ void SV_WWWRedirectClient( client_t *cl, msg_t *msg )
 
 	FS_FCloseFile(handle); // don't keep open, we only care about the size
 
+#if defined(COD2_PLUS) && !defined(_WIN32)
+	if ( SV_WwwPlus_IsAuto() )
+	{
+		// the client turns plus: into the address it plays on; the server behind a
+		// router does not know it. Only a Plus client may be sent it, and only for
+		// a file that the grant lets this server serve
+		if ( cl->plusVersion != PLUS_VERSION || !SV_WwwPlus_Grant(cl->netchan.remoteAddress, cl->downloadName, downloadSize) )
+		{
+			cl->wwwFallback = qtrue; // the UDP download, as after wwwdl fail
+			return;
+		}
+		I_strncpyz(cl->downloadURL, va("plus:%s", cl->downloadName), sizeof(cl->downloadURL));
+	}
+	else
+#endif
 	I_strncpyz(cl->downloadURL, va("%s/%s", sv_wwwBaseURL->current.string, cl->downloadName), sizeof(cl->downloadURL));
 	Com_Printf("Redirecting client '%s' to %s\n", cl->name, cl->downloadURL);
 
@@ -1501,6 +1519,9 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 		if (!cl->wwwFallback)
 		{
 			SV_WWWRedirectClient(cl, msg);
+#if defined(COD2_PLUS) && !defined(_WIN32)
+			if (!cl->wwwFallback) // no grant or not a Plus client: the UDP download below
+#endif
 			return;
 		}
 	}
