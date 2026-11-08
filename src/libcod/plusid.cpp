@@ -330,6 +330,8 @@ void PlusId_ClientDropped(int clientNum)
 		{
 			PlusId_Seen *e = PlusId_Find(pending, plusIds[clientNum], slots[clientNum].first);
 			e->seconds += slots[clientNum].unsaved;
+			// now pending only: the save must not write them again from the slot
+			slots[clientNum].unsaved = 0;
 		}
 		PlusId_Save();
 	}

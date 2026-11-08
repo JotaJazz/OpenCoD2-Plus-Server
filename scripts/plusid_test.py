@@ -267,7 +267,7 @@ def run_cases(port, protocol, log_path, game_log, seen_path, check):
         smoke_test.rcon(port, RCON, 'kick valid')
         smoke_test.wait_for(lambda: want in seen_file(seen_path), 5)
         first, seconds = seen_file(seen_path).get(want, (0, 0))
-        check('playtime_saved', seconds >= 4 and first > 0, str(seen_file(seen_path)))
+        check('playtime_saved', 4 <= seconds <= 8 and first > 0, str(seen_file(seen_path)))
         time.sleep(2)
         join('valid', priv)
         row = status_rows(port).get('valid', ('', 0, 0))
