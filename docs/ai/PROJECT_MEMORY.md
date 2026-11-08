@@ -13,6 +13,7 @@ rejected and what is left open; for what changed in detail see
 
 ## 2026-11-08 — Plus batch 2: graph cap
 
+- `scripts/plus.cfg` for the maintainer's home server: it execs `server.cfg` first, so its four Plus lines win, and it leaves `sv_wwwMaxRate` to `server.cfg` (a first version overrode the 99 a test `server.cfg` set). The Linux launcher takes `CFG=`; the Windows one does not, as `auto` downloads are Linux only. Checked on the Plus build: the dvars land and the TCP listener opens on the game port.
 - With floors the graph of `mp_brecourt` has 16183 of the 16384 nodes `sv_graphMaxNodes` allowed, so a bigger custom map would stop part way, silently: bots there had no path and nothing said why. The default is now 32768 (node indexes are `int`; memory and A* follow the nodes a map has, not the cap) and a flood that stops at the cap prints a console warning. `mp_brecourt` keeps the same 16183-node graph and the bots pass there; a cap of 500 on `mp_toujane` prints the warning.
 
 ## 2026-11-08 — bots: floors joined to the graph

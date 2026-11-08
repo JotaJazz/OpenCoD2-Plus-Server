@@ -11,6 +11,9 @@
 # Change /opt/cod2 below to the folder with cod2rev_lnxded and "main". A second
 # server needs its own port: put NET_PORT=28961 in /etc/cod2rev/<instance>.env,
 # which can also change DEDICATED (1 LAN, 2 internet) and MAP.
+#
+# A 60 Hz CoD2 1.3 Plus server with its own downloads: copy scripts/plus.cfg
+# next to the server.cfg it runs and enable cod2rev@plus.
 
 [Unit]
 Description=OpenCoD2-Plus Server %i

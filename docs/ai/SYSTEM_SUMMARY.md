@@ -8,7 +8,7 @@ Plus build variant; the latest release is `v1.0.0-rc2`).
 ```
 src/                     engine, server, game, libcod (see ../architecture/overview.md)
 mods/bots/               bots mod (GSC, 4 files)
-scripts/                 launchers, systemd unit, cfg generator, bots installer, tests, docs checker
+scripts/                 launchers, systemd unit, cfg generator, plus.cfg, bots installer, tests, docs checker
   linux/                 iniciar_cod2rev.sh, cod2rev@.service
   windows/               iniciar_cod2rev.bat
 docs/                    this documentation, CHANGES.md
