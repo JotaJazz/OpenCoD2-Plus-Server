@@ -164,7 +164,7 @@ set sv_mapRotation "gametype tdm map mp_toujane gametype tdm map mp_carentan gam
 // set sv_graphAstarMaxIterations 0            // int, 0 to 100000: maximum nodes expanded by one graphFindPath; 0 = no limit
 // set sv_graphAstarWeight 1.0                 // float, 1.0 to 2.0: A* heuristic weight; above 1 finds paths faster but less short
 // set sv_graphMaxGraphs 8                     // int, 1 to 64: maximum number of graphs scripts can create
-// set sv_graphMaxNodes 16384                  // int, 64 to 65535: maximum nodes in one graph
+// set sv_graphMaxNodes 32768                  // int, 64 to 65535: maximum nodes in one graph
 // set g_reservedModels 0                      // int, 0 to 255, applies on the next map or restart: model slots kept for script precaches, out of reach of map entities
 // set g_safePrecache 0                        // bool, applies on the next map or restart: warn and show a default model or effect instead of stopping the map on precache overflows
 // set sv_minimizeSysteminfo 0                 // int, 0 to 3, applies on the next map or restart: move some dvars from the systeminfo to the gamestate, to make room for more iwds

@@ -11,6 +11,10 @@ rejected and what is left open; for what changed in detail see
 - `plus_rules_test.py --only stance_rewind`: at 600 ms of lag, stand to crouch and to prone missed (`none`) and crouch to stand hit the torso with only the pose; all hit the head now. Rejected: cloning the whole tree per frame (64 × 128 trees from a pool of 4096 infos).
 - Left open: on the server going down holds the head a little over standing for 450–700 ms before it drops, not compared with the client, in [../roadmap/debt.md](../roadmap/debt.md).
 
+## 2026-11-08 — Plus batch 2: graph cap
+
+- With floors the graph of `mp_brecourt` has 16183 of the 16384 nodes `sv_graphMaxNodes` allowed, so a bigger custom map would stop part way, silently: bots there had no path and nothing said why. The default is now 32768 (node indexes are `int`; memory and A* follow the nodes a map has, not the cap) and a flood that stops at the cap prints a console warning. `mp_brecourt` keeps the same 16183-node graph and the bots pass there; a cap of 500 on `mp_toujane` prints the warning.
+
 ## 2026-11-08 — bots: floors joined to the graph
 
 - The cut-off floors had three causes, found by tracing the flood on mp_carentan: a cell held one node, so a floor took the cells of the floors above and below and of the room behind a wall; a grid point beside a wall or on a narrow stair had no room for the box, so doorways and stairwells were missed; and one straight sweep lifted 18 units runs into the steps of any stair. Keying cells by floor alone did not help (10.1% to 12.4%); a 32-unit grid joined mp_carentan but with four times the nodes.
