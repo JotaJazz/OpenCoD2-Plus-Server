@@ -70,6 +70,7 @@ def main():
                 for name in ('main/zz_svr_www.iwd', 'main/iw_00.iwd'):
                     reply, red = ask(port, sid, name)
                     check('svr refused ' + name, REFUSED in reply and not red, str(red))
+                # no scheme: the console reads // as a comment, even in quotes
                 smoke_test.rcon(port, RCON, 'set sv_wwwBaseURL "example.invalid/dl"')
                 reply, red = ask(port, sid, MOD)
                 check('real url kept', [r['url'] for r in red] == ['example.invalid/dl/' + MOD], str(red))

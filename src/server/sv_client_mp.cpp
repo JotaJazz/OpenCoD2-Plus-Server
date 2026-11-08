@@ -1409,6 +1409,13 @@ void SV_WWWRedirectClient( client_t *cl, msg_t *msg )
 		I_strncpyz(cl->downloadURL, va("plus:%s", cl->downloadName), sizeof(cl->downloadURL));
 	}
 	else
+#elif defined(COD2_PLUS)
+	if ( !I_stricmp(sv_wwwBaseURL->current.string, "auto") )
+	{
+		// no HTTP worker on Windows: auto redirects nobody, the UDP download follows
+		cl->wwwFallback = qtrue;
+		return;
+	}
 #endif
 	I_strncpyz(cl->downloadURL, va("%s/%s", sv_wwwBaseURL->current.string, cl->downloadName), sizeof(cl->downloadURL));
 	Com_Printf("Redirecting client '%s' to %s\n", cl->name, cl->downloadURL);
@@ -1519,7 +1526,7 @@ void SV_WriteDownloadToClient( client_t *cl, msg_t *msg )
 		if (!cl->wwwFallback)
 		{
 			SV_WWWRedirectClient(cl, msg);
-#if defined(COD2_PLUS) && !defined(_WIN32)
+#ifdef COD2_PLUS
 			if (!cl->wwwFallback) // no grant or not a Plus client: the UDP download below
 #endif
 			return;
