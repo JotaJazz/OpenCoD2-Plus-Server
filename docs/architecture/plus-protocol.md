@@ -262,6 +262,35 @@ The rest of milestone 1:
   from close by, so it may have had the LAN exemption.
 - Still to check: a player on the internet, and whether 40 Hz feels better.
 
+## Antilag
+
+A shot is traced against the other players where they were at the time of
+the shooter's command (`G_AntiLagRewindClientPos`, `src/game/g_weapon_mp.cpp`),
+but the stock code moves only their origins: the hitboxes keep the yaw, lean,
+aim and stance flags of the present. A shot at a head that leaned out a
+moment ago misses it, as the head has come back.
+
+In the `PLUS=1` build each player's pose is kept at the end of every frame
+(`G_PlusRecordPose`, from `ClientEndFrame`), for 128 frames: `r.currentAngles`,
+the stance flags and torso and waist pitch of `s`, and the yaw, pitch, lean
+and bone controllers of the player's `clientInfo_t`. The controllers reach
+their angles over time, as the client draws them, so their state is kept as
+it is, not rebuilt from the archived playerstate. The antilag sets the newest
+pose at or before the shot's time with the origin, resets the skeleton cache,
+and puts both back after the trace. Server code only: the Plus version stays
+123.
+
+Left out: the animation of a stance change. It lives in the XAnim tree, which
+nothing archives, so a player who crouched since the shot keeps the crouch
+animation with the standing flags.
+
+`plus_rules_test.py --only lean_rewind` has a second client 600 ms behind
+shoot, down the sights and with no spread, at where the player's head was
+while it leaned, after it let go: stock misses both sides, the Plus build hits
+the head. The bullet leaves about 4 degrees above the view (the gun's own
+angles), so a shot over the head into the wall measures that first. The test
+game folder's `config_mp_server.cfg` sets `g_antilag 0`; the check sets it to 1.
+
 ## Milestone 0 results
 
 Measured on 2026-10-31 with the 1.3 build: 20 protocol clients and 20 bots in

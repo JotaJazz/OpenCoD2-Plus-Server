@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-07 — the antilag rewinds the pose
+
+- The antilag moved only origins, so the hitboxes kept the present lean, yaw, aim and stance flags. In `PLUS=1`, `G_PlusRecordPose` keeps each player's pose per frame (128 frames) and the antilag sets it with the origin, resetting the skeleton cache. The controllers' own state is kept, since they lerp toward their angles as the client draws them; rebuilding from the archived playerstate would give the settled pose, wrong in exactly the fast moves.
+- Measured first: a second client 600 ms behind, down the sights with no spread, shooting where the head leaned, missed both sides on stock and hits the head now (6 of 6). The bullet leaves about 4 degrees above the view (the gun's angles), so the check calibrates with a shot into the wall. The test folder's config sets `g_antilag 0`: every earlier rule test ran without antilag, and the check sets it to 1.
+- Left open: the animation of a stance change (XAnim tree not archived), in [../roadmap/debt.md](../roadmap/debt.md).
+
 ## 2026-11-07 — the archive at 62.5 Hz
 
 - Looking into the antilag (it rewinds only the origin; the pose, yaw, lean and stance stay at the present, next work), an agent found that `SV_GetCachedSnapshot` counted `sv_fps` frames a second: at 62.5 Hz a second back was 960 ms, so the antilag and the killcam took frames up to two later. It counts whole frames now, in every build; 20 and 40 Hz do not change.
