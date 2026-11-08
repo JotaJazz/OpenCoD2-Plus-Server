@@ -203,6 +203,10 @@ GAME_SOURCES=$(wildcard $(GAME_DIR)/*.cpp)
 QCOMMON_SOURCES=$(wildcard $(QCOMMON_DIR)/*.cpp)
 SCR_SOURCES=$(wildcard $(SCR_DIR)/*.cpp)
 SERVER_SOURCES=$(wildcard $(SERVER_DIR)/*.cpp)
+# sv_www_plus.cpp is empty outside the Plus build: leave it out so the other builds stay byte for byte
+ifneq ($(PLUS),1)
+SERVER_SOURCES:=$(filter-out $(SERVER_DIR)/sv_www_plus.cpp,$(SERVER_SOURCES))
+endif
 STRINGED_SOURCES=$(wildcard $(STRINGED_DIR)/*.cpp)
 UNIVERSAL_SOURCES=$(wildcard $(UNIVERSAL_DIR)/*.cpp)
 XANIM_SOURCES=$(wildcard $(XANIM_DIR)/*.cpp)
