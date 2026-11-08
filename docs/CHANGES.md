@@ -67,6 +67,8 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 - **Too many dvars is no longer fatal:** the server holds at most 1280 dvars, and one more stopped it with a fatal error. A script that names a new dvar with `setCvar` or `makeCvarServerInfo` when there is no room now gets a script error, and `set`, `seta`, `sets`, `setu`, `dvar_bool`, `dvar_int` and `dvar_float` from the console, rcon or a config print an error. A mod that stores data in one dvar per player or per round could stop a server this way after enough maps.
 - **Precache limits that warn instead of stopping the map (from zk_libcod, same names):** with `g_safePrecache 1`, a model or effect past the engine's limits, or a model set without being precached, prints a warning and shows the default model (`xmodel/default_static_model`) or the missing-effect sprite instead of ending the map; both take index 1, set aside when the map loads. `g_reservedModels` keeps that many model slots out of reach of the map's own entities, so the map, gametype and `startGameType` scripts can still precache their models on maps with many of them. Both take effect from the next map.
 
+- **Plus ID:** the OpenCoD2-Plus client can prove a key-pair identity at connect: it signs the challenge and the server address with ECDSA P-256 and the server gives the player an ID such as `P-ABCD-EFGH-IJKL-MNOP` that no one else can take, with no hardware data. The keys are optional, so every build takes them and other clients join as before, without an ID; an invalid signature or another server's address only leaves the player without one, and is logged. `sv_requirePlusId 1` refuses players without an ID, `sv_publicAddress` names the address players dial (needed behind NAT), `rcon plusIdStatus` lists the IDs and scripts read them with `getPlusId()`. See [plus-id.md](architecture/plus-id.md).
+
 ## Compatibility and server behaviour
 
 - **Script VM optimized:** the interpreter loop was built without optimization because its state had to survive the jump out of a script error. That state now stays in memory, so the loop is optimized like the rest: a script-heavy loop runs about 11% faster.
@@ -190,6 +192,9 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 | `sv_botKickMessages` | `1` | 0–1 | `0` hides the message for kicked bots. |
 | `sv_noAuthorize` | `0` | 0–1 | `1` skips the CD key authorization server; players get GUID 0. |
 | `sv_challengeStateless` | `0` | 0–1 | `1` answers `getchallenge` with the signed challenge alone, with no slot and no global limit, and checks the CD key at `connect`: a flood of made-up addresses cannot keep players out, but each join waits about 3 seconds more. |
+| `sv_publicAddress` | `""` | — | `ip:port` players reach the server at, which their Plus ID signatures must name. Empty: only LAN players get a Plus ID. |
+| `sv_requirePlusId` | `0` | 0–1 | `1` refuses players without a valid Plus ID, with `sv_plusIdNotice`. |
+| `sv_plusIdNotice` | `""` | text | What a player refused by `sv_requirePlusId` reads. Empty uses the default, with the link to the client. |
 | `sv_authorizeTimeout` | `5000` | 0–1200000 | Milliseconds a connecting player waits for the authorization server. |
 | `sv_limitLocalRcon` | `0` | 0–1 | `1` applies the rcon rate limit to LAN addresses too. |
 | `sv_isLookingAtOnDemand` | `0` | 0–1 | `1` finds what a player looks at only when a script calls `isLookingAt` (no crosshair names or `trigger_lookat` then). |

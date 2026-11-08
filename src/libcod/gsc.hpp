@@ -227,6 +227,16 @@ const char* NET_AdrToStringNoPort( netadr_t a );
 
 void PM_ProjectVelocity(const float *velIn, const float *normal, float *velOut);
 void SV_AddLibcodCommands();
+
+// plusid.cpp: the Plus ID proven at connect; "" for a client without one
+const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, char idOut[22]);
+bool PlusId_AddressAccepted(netadr_t signedAdr, netadr_t from);
+void PlusId_ClientConnected(int clientNum, const char *id);
+void PlusId_ClientDropped(int clientNum);
+const char *PlusId_ForClient(int clientNum);
+void PlusId_RegisterDvars();
+void PlusId_SpawnServer();
+void PlusId_AddCommands();
 const char *SV_ModifyConfigstringIwdChkSum( client_t *client, int index );
 VariableValue* Scr_GetValue(unsigned int param);
 

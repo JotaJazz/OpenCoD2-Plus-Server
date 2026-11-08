@@ -24,6 +24,7 @@ directly into our functions. The user-facing list is in
 | `src/libcod/net_http.cpp`, `gsc_http.cpp` | HTTP/HTTPS client and WebSocket (Mbed TLS) |
 | `src/libcod/gsc_sqlite.cpp`, `gsc_exec.cpp`, `gsc_mysql.cpp` | SQLite, `exec`/`exec_async`, MySQL (off by default) |
 | `src/libcod/gsc_memory.cpp` | Raw memory builtins |
+| `src/libcod/plusid.hpp`, `plusid.cpp` | Plus ID: signing and verification shared with the client, the connect check, `plusIdStatus` ([plus-id.md](plus-id.md)) |
 
 ## How it attaches to the engine
 

@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — Plus ID verified at connect
+
+- A client proves an ECDSA P-256 key pair by signing `cod2plus-id-v1|<challenge>|<pa>`; `pk`, `ps` and `pa` are optional `connect` keys in every libcod build, so the Plus version stays 123 ([ADR 0019](../architecture/adr/0019-plus-id.md)). `pa` was added to the design's two keys: the server cannot know which of its addresses the client dialled (no destination address from `recvfrom`), and the private-address rule needs it.
+- Every failure (bad hex, address rule, the 50 a second cap, signature) leaves the player without an ID instead of refusing; only `sv_requirePlusId 1` refuses. The relay rule (a private signed address only from a private source) cannot be shown locally, so `plusid_test.py`'s `address_rule` checks a Python copy of it.
+- Open: playtime, local bans and shared ban lists build on `PlusId_ForClient`; `sv_publicAddress` given as a host name is resolved on each connect.
+
 ## 2026-11-08 — Plus batch 3: error counts and launchers
 
 - The grouped script errors kept a count that only printed with the next repeat, so the last 10 s of an error that stopped never showed. The count now prints from `Scr_PlusFlushRuntimeErrors`, each server frame, and a message quiet for a whole window prints in full again; `error_repeats` waits for that third block.

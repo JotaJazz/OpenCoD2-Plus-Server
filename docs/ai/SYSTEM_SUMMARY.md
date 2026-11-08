@@ -61,6 +61,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | Bots test | `python3 scripts/bots_test.py <game> [--gametype sd\|ctf\|hq]` |
 | HTTP test | `python3 scripts/http_test.py <game>` |
 | Plus rules test | `python3 scripts/plus_rules_test.py <game> --binary <1.3 Plus bin>` |
+| Plus ID test | `python3 scripts/plusid_test.py <game>` |
 | Docs check | `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts -p 'test_*.py'` |
 | Regenerate example cfg | `python3 scripts/gen_server_cfg.py` |
 | Install bots | `python3 scripts/install_bots.py <game> --dest <home>` |
@@ -73,4 +74,5 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | GSC builtins and `CodeCallback_*` | zk_libcod names | Server mods, `mods/bots` |
 | Dvars | `scripts/server.cfg.example`, [../CHANGES.md](../CHANGES.md#new-variables) | Admins' `server.cfg` |
 | `crash.log` format | `Sys_InstallCrashHandler` in `src/unix/unix_main.cpp`, `src/win32/win_main.cpp` | Admins, `addr2line` |
+| Plus ID handshake (`pk`, `ps`, `pa`) | [../architecture/plus-id.md](../architecture/plus-id.md), `src/libcod/plusid.hpp` | OpenCoD2-Plus client, which vendors the header |
 | Waypoint graph files | `src/libcod/gsc_graph.cpp` | `mods/bots` cache per map |

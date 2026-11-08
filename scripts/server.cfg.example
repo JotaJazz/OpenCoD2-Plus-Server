@@ -171,6 +171,9 @@ set sv_mapRotation "gametype tdm map mp_toujane gametype tdm map mp_carentan gam
 // set g_noMoverBlockage 0                     // bool: let movers go on when an entity blocks them
 // set g_spawnMapWeapons 1                     // bool: spawn the map's weapons; 0 hands them to CodeCallback_MapWeaponsLoad
 // set g_spawnMapTurrets 1                     // bool: spawn the map's turrets; 0 hands them to CodeCallback_MapTurretsLoad
+// set sv_publicAddress ""                     // string: ip:port players reach this server at, for their Plus ID signatures; empty: only LAN players get a Plus ID
+// set sv_requirePlusId 0                      // bool: refuse players without a valid Plus ID, with sv_plusIdNotice
+// set sv_plusIdNotice ""                      // string: what a player without a Plus ID reads when sv_requirePlusId refuses them; empty uses the default, with the link to the client
 
 // --- Game rules ---
 // mapname                                     // string, read-only: map currently loaded

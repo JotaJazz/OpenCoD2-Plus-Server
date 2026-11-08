@@ -171,6 +171,7 @@ void RegisterLibcodDvars()
 	sv_botUseTriggerUse = Dvar_RegisterBool("sv_botUseTriggerUse", false, DVAR_CHANGEABLE_RESET);
 	g_bulletDrop = Dvar_RegisterBool("g_bulletDrop", false, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	g_bulletDropMaxTime = Dvar_RegisterInt("g_bulletDropMaxTime", 10000, 50, 60000, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
+	PlusId_RegisterDvars();
 
 #if LIBCOD_COMPILE_JSON == 1
 	gsc_json_register_dvars();
@@ -197,6 +198,7 @@ void Libcod_SpawnServerConfigstrings()
 {
 	g_reservedModels = Dvar_RegisterInt("g_reservedModels", 0, 0, 255, DVAR_ARCHIVE | DVAR_LATCH | DVAR_CHANGEABLE_RESET);
 	g_safePrecache = Dvar_RegisterBool("g_safePrecache", false, DVAR_ARCHIVE | DVAR_LATCH | DVAR_CHANGEABLE_RESET);
+	PlusId_SpawnServer();
 
 	if ( g_safePrecache->current.boolean )
 	{
@@ -454,6 +456,8 @@ static void Com_Assert_f( void )
 
 void SV_AddLibcodCommands()
 {
+	PlusId_AddCommands();
+
 	if ( com_developer->current.integer )
 	{
 		Cmd_AddCommand("assert", Com_Assert_f);

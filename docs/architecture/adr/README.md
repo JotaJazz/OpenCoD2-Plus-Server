@@ -25,6 +25,7 @@ folder existed, with the date the decision was made.
 | [0016](0016-name-opencod2-plus-server.md) | The project is named OpenCoD2-Plus Server | Accepted |
 | [0017](0017-sse2-math.md) | Float math on SSE2, not x87 | Accepted |
 | [0018](0018-signed-challenges.md) | Signed challenges, and a stateless mode for floods | Accepted |
+| [0019](0019-plus-id.md) | A player identity proven by a signature, not by hardware | Accepted |
 
 ## Template
 
