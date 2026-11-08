@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — bots: floors joined to the graph
+
+- The cut-off floors had three causes, found by tracing the flood on mp_carentan: a cell held one node, so a floor took the cells of the floors above and below and of the room behind a wall; a grid point beside a wall or on a narrow stair had no room for the box, so doorways and stairwells were missed; and one straight sweep lifted 18 units runs into the steps of any stair. Keying cells by floor alone did not help (10.1% to 12.4%); a 32-unit grid joined mp_carentan but with four times the nodes.
+- Spawn points with no way out of their part of the graph: 27 to 2 on mp_carentan, 27 to 3 on mp_toujane, 5 to 2 on mp_burgundy, 12 to 0 on mp_brecourt; nodes outside the main graph's undirected component 9.9% to 0.8%, 8.1% to 0.0%, 1.6% to 0.7%, 0.2% to 0.0%. Nodes the main graph cannot reach and come back from 10.1% to 3.8% on mp_carentan but 8.8% to 17.4% on mp_toujane: the flood now covers its roof terraces, left by a drop and entered only with a jump ([../roadmap/debt.md](../roadmap/debt.md)).
+- About a third more nodes; mp_brecourt has 16183 of the 16384 `sv_graphMaxNodes` allows, so a bigger map will hit the cap. The cache name is `_v3`.
+
 ## 2026-11-08 — Plus batch: exact wait
 
 - The compact entity format (Plus 124) was dropped before any code: measured at 60 Hz with the `pos.trTime` offset in, XOR floats and variable-length integers save 1.3–1.6% of the entity field bits ([plus-protocol.md](../architecture/plus-protocol.md#milestone-3-measurements)). The maintainer chose to drop it over a trained Huffman table (about 5%) or zstd with a dictionary (about 10%), both of which also need Plus 124.

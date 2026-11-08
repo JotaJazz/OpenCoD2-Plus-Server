@@ -74,6 +74,18 @@ directly into our functions. The user-facing list is in
   `cmd_executestring` or `processRemoteCommand` are deferred until the script
   returns: changing the map frees the VM the script is running in.
 
+## Waypoint graph builder
+
+- `graphAutodiscover` and `graphAutodiscoverEx` flood a grid (64 units for
+  the bots mod) from their seeds. A cell holds a node per floor (nodes a
+  player height apart) and per side of a wall crossing it; a neighbour with
+  no room for the player box is tried a quarter and half a step aside, which
+  finds doorways and narrow stairs.
+- Links: walk (type 0, or 1 above 8 units of height), a one-way drop
+  (type 2, up to 128 units) or none. A walk is one straight sweep lifted by
+  the step height, or, for stairs, 8-unit moves that step up 18 units and
+  back onto the ground the way pmove does. Jumps and mantles are not linked.
+
 ## Unsafe builtins
 
 Builtins that reach the shell, raw memory, files by raw path or any network

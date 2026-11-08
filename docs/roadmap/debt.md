@@ -39,7 +39,7 @@ None open. R1 became a known gap; R2–R5 were fixed on 2026-10-24
 | `sd --bombmode 1` on `mp_brecourt` sometimes never plants | Cause unknown. It planted in 2 of 3 runs before the audit and 3 of 3 after, but a separate run after it failed too. `bombmode 1` only means anything on the six maps with single-mode marks |
 | Local harness `t_ammo` failed once on `a loaded weapon stays` | Cause not proven (perhaps a bot throwing a grenade); 12 of 12 passed after |
 | A charging bot keeps the strafe's `rightmove`, so it comes in on a diagonal | Cosmetic. `setWalkDir("forward")` in `mods/bots/maps/mp/bots/_bots_combat.gsc` |
-| Multi-floor cells in the graph builder | 1–2 days of work. Upper floors and cellars that hold a spawn get a graph of their own, cut off from the rest: 10.1% of the nodes on mp_carentan, 8.8% on mp_toujane, under 2% on mp_burgundy and mp_brecourt. Dropping nodes without links does not help. Patrols already avoid them; a bot that spawns on one stays there |
+| Spawn points the waypoint graph cannot leave | A bot that spawns there stays: 3 of the 128 spawn points of mp_toujane, 2 of mp_carentan, 2 of mp_burgundy, none on mp_brecourt (27, 27, 5 and 12 before the multi-floor fix). The toujane ones are roof terraces 24 to 64 units apart, which need a jump: the graph has walk, stair and drop links only. The others were not looked at |
 | Bullet antilag rewinds are not grouped per frame | Performance only |
 
 ## Deferred decisions
