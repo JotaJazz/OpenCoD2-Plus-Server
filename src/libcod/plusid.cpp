@@ -14,15 +14,44 @@ static dvar_t *sv_requirePlusId;
 static dvar_t *sv_plusIdNotice;
 static char plusIds[MAX_CLIENTS][22];
 
-// 0.0.0.0 when the dvar is empty, not an address or the "localhost" of net_ip,
-// which binds every interface
-static bool PlusId_DvarAddress(const char *name, netadr_t *adr)
+// A dvar's address, resolved only when its text changes: a host name would
+// block the frame on every connect. False when the dvar is empty, not an
+// address, 0.0.0.0 or the "localhost" of net_ip, which binds every interface.
+struct PlusId_CachedAddress
 {
-	const dvar_t *dvar = Dvar_FindVar(name);
+	const char *name;
+	char text[256];
+	bool valid;
+	netadr_t adr;
+};
 
-	// shortcut: a host name is resolved on each connect, an IP is cheap; cache it if admins use names
-	return dvar && *dvar->current.string && Q_stricmp(dvar->current.string, "localhost")
-	       && NET_StringToAdr(dvar->current.string, adr) && adr->type == NA_IP && ( adr->ip[0] | adr->ip[1] | adr->ip[2] | adr->ip[3] );
+static PlusId_CachedAddress publicAddress = { "sv_publicAddress" }, netIp = { "net_ip" };
+
+static bool PlusId_DvarAddress(PlusId_CachedAddress *cache, netadr_t *adr)
+{
+	const dvar_t *dvar = Dvar_FindVar(cache->name);
+	const char *text = dvar ? dvar->current.string : "";
+
+	if ( !cache->text[0] || strncmp(cache->text + 1, text, sizeof(cache->text) - 2) )
+	{
+		// a leading '+' keeps an empty dvar from looking unresolved
+		Com_sprintf(cache->text, sizeof(cache->text), "+%s", text);
+		cache->valid = *text && Q_stricmp(text, "localhost") && NET_StringToAdr(text, &cache->adr)
+		               && cache->adr.type == NA_IP && ( cache->adr.ip[0] | cache->adr.ip[1] | cache->adr.ip[2] | cache->adr.ip[3] );
+	}
+
+	*adr = cache->adr;
+	return cache->valid;
+}
+
+// RFC 1918, loopback and link-local only; not Sys_IsLANAddress, which also
+// takes anyone in the /24 of one of the host's own IPs (a VPN neighbour)
+static bool PlusId_IsPrivate(netadr_t adr)
+{
+	const unsigned char *ip = adr.ip;
+
+	return adr.type == NA_IP && ( ip[0] == 10 || ip[0] == 127 || ( ip[0] == 169 && ip[1] == 254 )
+	                              || ( ip[0] == 172 && ( ip[1] & 0xF0 ) == 16 ) || ( ip[0] == 192 && ip[1] == 168 ) );
 }
 
 bool PlusId_AddressAccepted(netadr_t signedAdr, netadr_t from)
@@ -33,15 +62,19 @@ bool PlusId_AddressAccepted(netadr_t signedAdr, netadr_t from)
 	if ( signedAdr.type != NA_IP || !port || (unsigned short)BigShort(signedAdr.port) != port->current.integer )
 		return false;
 
-	if ( PlusId_DvarAddress("sv_publicAddress", &own) && !memcmp(own.ip, signedAdr.ip, 4) )
-		return true;
-
-	if ( PlusId_DvarAddress("net_ip", &own) && !memcmp(own.ip, signedAdr.ip, 4) )
-		return true;
-
 	// a private address names this server only for a packet that comes from a
-	// private network too: from a public one it may be another server's relay
-	return Sys_IsLANAddress(signedAdr) && Sys_IsLANAddress(from);
+	// private network too, even when it is net_ip: from a public one it may be
+	// another server's relay
+	if ( PlusId_IsPrivate(signedAdr) && !PlusId_IsPrivate(from) )
+		return false;
+
+	if ( PlusId_DvarAddress(&publicAddress, &own) && !memcmp(own.ip, signedAdr.ip, 4) )
+		return true;
+
+	if ( PlusId_DvarAddress(&netIp, &own) && !memcmp(own.ip, signedAdr.ip, 4) )
+		return true;
+
+	return PlusId_IsPrivate(signedAdr);
 }
 
 // the ip:port the client signed, only in the form NET_AdrToString writes, so
@@ -118,7 +151,7 @@ void PlusId_SpawnServer()
 	static bool warned;
 	netadr_t own;
 
-	if ( !warned && !PlusId_DvarAddress("sv_publicAddress", &own) && !PlusId_DvarAddress("net_ip", &own) )
+	if ( !warned && !PlusId_DvarAddress(&publicAddress, &own) && !PlusId_DvarAddress(&netIp, &own) )
 		Com_Printf("plusid: no sv_publicAddress, only LAN players get a Plus ID\n");
 	warned = true;
 }

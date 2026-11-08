@@ -85,18 +85,25 @@ def sign(priv, challenge, adr):
 
 
 def _private(ip):
-    """Sys_IsLANAddress without the host's own class C networks."""
+    """PlusId_IsPrivate: RFC 1918, loopback and link-local only (not the host's
+    own /24, which Sys_IsLANAddress also takes)."""
     a = [int(x) for x in ip.split('.')]
     return (a[0] in (10, 127) or a[:2] in ([169, 254], [192, 168])
             or (a[0] == 172 and a[1] & 0xF0 == 16))
 
 
-def address_accepted(signed_ip, from_ip, public):
-    """The server's rule (PlusId_AddressAccepted) for the IP the client signed:
-    the public address, or a private one only when the packet comes from one."""
-    if public and signed_ip == public:
+def address_accepted(signed_ip, from_ip, public, net_ip='', signed_port=28960, net_port=28960):
+    """The server's rule (PlusId_AddressAccepted) for the address the client
+    signed, branch for branch: the server's port; a private address only from
+    a private source, even when it is net_ip; then the public address or net_ip;
+    then any private address."""
+    if signed_port != net_port:
+        return False
+    if _private(signed_ip) and not _private(from_ip):
+        return False
+    if signed_ip in (public, net_ip) and signed_ip not in ('', '0.0.0.0'):
         return True
-    return _private(signed_ip) and _private(from_ip)
+    return _private(signed_ip)
 
 
 def id_keys(pk_hex, ps_hex, adr):
@@ -119,13 +126,21 @@ def status(port):
 
 
 def check_address_rule(check):
-    table = [('10.0.0.5', '203.0.113.9', '203.0.113.7', False),  # relay from a public address
-             ('10.0.0.5', '192.168.1.2', '', True),
-             ('127.0.0.1', '127.0.0.1', '', True),
-             ('203.0.113.7', '198.51.100.1', '203.0.113.7', True),
-             ('203.0.113.8', '198.51.100.1', '203.0.113.7', False),
-             ('203.0.113.8', '127.0.0.1', '203.0.113.7', False)]
-    bad = [row for row in table if address_accepted(*row[:3]) != row[3]]
+    # (signed, from, sv_publicAddress, net_ip, signed port, expected)
+    table = [('10.0.0.5', '203.0.113.9', '203.0.113.7', '', 28960, False),  # relay from a public address
+             ('10.0.0.5', '192.168.1.2', '', '', 28960, True),
+             ('127.0.0.1', '127.0.0.1', '', '', 28960, True),
+             ('203.0.113.7', '198.51.100.1', '203.0.113.7', '', 28960, True),
+             ('203.0.113.7', '198.51.100.1', '', '203.0.113.7', 28960, True),
+             ('203.0.113.8', '198.51.100.1', '203.0.113.7', '', 28960, False),
+             ('203.0.113.8', '127.0.0.1', '203.0.113.7', '', 28960, False),
+             ('203.0.113.7', '198.51.100.1', '203.0.113.7', '', 28961, False),  # another port
+             # private net_ip relayed from a public address
+             ('192.168.1.5', '198.51.100.1', '', '192.168.1.5', 28960, False),
+             # a public neighbour in the server's /24 (a shared VPN) relaying its own signed IP
+             ('203.0.113.50', '203.0.113.50', '', '203.0.113.7', 28960, False),
+             ('26.10.0.9', '26.10.0.20', '', '26.10.0.5', 28960, False)]
+    bad = [row for row in table if address_accepted(*row[:4], signed_port=row[4]) != row[5]]
     check('address_rule', not bad, str(bad))
 
 
@@ -169,6 +184,11 @@ def run_cases(port, protocol, log_path, game_log, check):
         priv = make_key()
         reply = join('relay', priv, f'10.9.9.9:{port}')
         check('relay', reply is None and status(port).get('relay') == plus_id(public_key(priv)), f'{reply} {status(port)}')
+
+        # the new sv_publicAddress is resolved on the first connect after it changed
+        priv = make_key()
+        reply = join('public', priv, f'203.0.113.7:{port}')
+        check('public_match', reply is None and status(port).get('public') == plus_id(public_key(priv)), f'{reply} {status(port)}')
 
         reply = join('mismatch', make_key(), f'203.0.113.8:{port}')
         logged = f'signed for another address, 203.0.113.8:{port}' in open(log_path, encoding='latin-1').read()

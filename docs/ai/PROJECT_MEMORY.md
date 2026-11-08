@@ -9,7 +9,7 @@ rejected and what is left open; for what changed in detail see
 
 - A client proves an ECDSA P-256 key pair by signing `cod2plus-id-v1|<challenge>|<pa>`; `pk`, `ps` and `pa` are optional `connect` keys in every libcod build, so the Plus version stays 123 ([ADR 0019](../architecture/adr/0019-plus-id.md)). `pa` was added to the design's two keys: the server cannot know which of its addresses the client dialled (no destination address from `recvfrom`), and the private-address rule needs it.
 - Every failure (bad hex, address rule, the 50 a second cap, signature) leaves the player without an ID instead of refusing; only `sv_requirePlusId 1` refuses. The relay rule (a private signed address only from a private source) cannot be shown locally, so `plusid_test.py`'s `address_rule` checks a Python copy of it.
-- Open: playtime, local bans and shared ban lists build on `PlusId_ForClient`; `sv_publicAddress` given as a host name is resolved on each connect.
+- The address rule's "private" is its own predicate (RFC 1918, loopback, link-local), not `Sys_IsLANAddress`, which takes the host's whole /24 and let a VPN neighbour relay; a private signed IP needs a private source even when it is `net_ip`. `sv_publicAddress` and `net_ip` are resolved once per change, never per connect. Open: playtime, local bans and shared ban lists build on `PlusId_ForClient`.
 
 ## 2026-11-08 — Plus batch 3: error counts and launchers
 

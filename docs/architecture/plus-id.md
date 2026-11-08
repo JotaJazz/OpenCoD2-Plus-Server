@@ -59,20 +59,24 @@ is. Bots and local clients have no challenge and no ID.
 
 ### Address rule (`PlusId_AddressAccepted`)
 
-In order:
+In order, where "private" means 10/8, 127/8, 169.254/16, 172.16/12 or
+192.168/16 (`PlusId_IsPrivate`):
 
 1. The signed port must be the server's `net_port`.
-2. The signed IP is that of `sv_publicAddress`, or of `net_ip` when it names
+2. A private signed IP with a connect from a public address: reject, even when
+   it is `net_ip` or `sv_publicAddress`.
+3. The signed IP is that of `sv_publicAddress`, or of `net_ip` when it names
    an address (not empty, `localhost` or `0.0.0.0`): accept.
-3. The signed IP is private or loopback (`Sys_IsLANAddress`) **and** the
-   connect comes from a private or loopback address too: accept.
-4. Anything else: reject.
+4. The signed IP is private (and so, by step 2, is the source): accept.
+5. Anything else: reject.
 
-Step 3's second half stops a relay: a server on a VPN (Radmin, Hamachi) with
-the same private IP as this one could otherwise pass on a signature from its
-public address. Local tests cannot show it (every test address is private);
-`plusid_test.py`'s `address_rule` checks the same table on a Python copy of the
-rule.
+Step 2 stops a relay: a server on a VPN (Radmin, Hamachi) with the same
+private IP as this one could otherwise pass on a signature from its public
+address. The predicate is not `Sys_IsLANAddress`, which also takes anyone in
+the /24 of one of the host's own IPs, so a neighbour there (a shared VPN's
+26.x or 25.x) could relay from its own address. Local tests cannot show it
+(every test address is private); `plusid_test.py`'s `address_rule` checks the
+same table on a Python copy of the rule.
 
 Without `sv_publicAddress` and a concrete `net_ip`, only LAN players can get an
 ID, and the first map prints
@@ -83,7 +87,7 @@ NAT must set it to the address players dial.
 
 | Name | Default | Effect |
 |---|---|---|
-| `sv_publicAddress` | `""` | `ip:port` players reach the server at; a host name is resolved on each connect |
+| `sv_publicAddress` | `""` | `ip:port` players reach the server at; a host name is resolved once, at the first connect after it changes |
 | `sv_requirePlusId` | `0` | `1` refuses players without a valid ID |
 | `sv_plusIdNotice` | `""` | refusal text; empty uses a default with the link to the client |
 | `plusIdStatus` | command | one line per player: `num name id`, `-` without an ID |
