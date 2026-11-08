@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — the antilag rewinds the stance's animation
+
+- The pose rewind left the XAnim tree at the present, so a player who crouched or went prone since the shot had the new animation with the old flags. In `PLUS=1` the per-frame pose keeps the tree's active entries (16 at most, 6 seen) and the antilag sets the tree to them, reusing, taking out or allocating infos, and puts it back; if a script the shot ran rebuilt the tree (a dropped player) it only frees what it took out. 170 ns more per player and frame.
+- `plus_rules_test.py --only stance_rewind`: at 600 ms of lag, stand to crouch and to prone missed (`none`) and crouch to stand hit the torso with only the pose; all hit the head now. Rejected: cloning the whole tree per frame (64 × 128 trees from a pool of 4096 infos).
+- Left open: on the server going down holds the head a little over standing for 450–700 ms before it drops, not compared with the client, in [../roadmap/debt.md](../roadmap/debt.md).
+
 ## 2026-11-08 — bots: floors joined to the graph
 
 - The cut-off floors had three causes, found by tracing the flood on mp_carentan: a cell held one node, so a floor took the cells of the floors above and below and of the room behind a wall; a grid point beside a wall or on a narrow stair had no room for the box, so doorways and stairwells were missed; and one straight sweep lifted 18 units runs into the steps of any stair. Keying cells by floor alone did not help (10.1% to 12.4%); a 32-unit grid joined mp_carentan but with four times the nodes.

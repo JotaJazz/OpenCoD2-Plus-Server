@@ -350,9 +350,18 @@ pose at or before the shot's time with the origin, resets the skeleton cache,
 and puts both back after the trace. Server code only: the Plus version stays
 123.
 
-Left out: the animation of a stance change. It lives in the XAnim tree, which
-nothing archives, so a player who crouched since the shot keeps the crouch
-animation with the standing flags.
+The animation of a stance change lives in the player's XAnim tree, so the
+pose also keeps the tree's active entries (index and `XAnimState`, 16 at
+most; the tests saw 6), scanned from `infoArray` each frame. The rewind sets
+the tree to them: an entry active in both keeps its info with the old state,
+one active only now is taken out of `infoArray` but not freed, one active only
+then gets a new info. The restore frees the new infos and puts the present
+back, unless the tree no longer holds what the rewind set (a script the shot
+ran dropped the player, which clears it): then it only frees the infos it took
+out. Recording costs about 170 ns more per player and frame (345 against
+175 ns, measured at `sv_fps 125`), 1.4 ms a second for 64 players at 125 Hz.
+Left out: a frame with more than 16 entries keeps the present animation, and
+the pose is the newest frame at or before the shot, not interpolated.
 
 `plus_rules_test.py --only lean_rewind` has a second client 600 ms behind
 shoot, down the sights and with no spread, at where the player's head was
@@ -360,6 +369,14 @@ while it leaned, after it let go: stock misses both sides, the Plus build hits
 the head. The bullet leaves about 4 degrees above the view (the gun's own
 angles), so a shot over the head into the wall measures that first. The test
 game folder's `config_mp_server.cfg` sets `g_antilag 0`; the check sets it to 1.
+
+`--only stance_rewind` has the same client shoot at where the head was before
+the player crouched, went prone or stood up from a crouch, 750, 900 and 350 ms
+after it started: with only the pose rewound the first two miss (`none`) and
+the third hits the torso, with the tree rewound all hit the head. On the
+server, going down holds the head about 4 units over standing, unchanged, for
+about 450 ms (crouch) or 700 ms (prone) before it drops, so the shots wait
+until the head has left.
 
 ## Milestone 0 results
 
