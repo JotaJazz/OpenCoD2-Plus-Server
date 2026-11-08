@@ -121,6 +121,29 @@ Callback_StartGameType()
 	setCvar("plustest_head", "");
 	setCvar("plustest_fire", "");
 	setCvar("plustest_hit", "");
+	setCvar("plustest_wait", "");
+	level thread waits();
+}
+
+// plustest_wait (rcon) times 40 x wait 0.05 and 4 x wait 1 into plustest_waited
+waits()
+{
+	for(;;)
+	{
+		if(getCvar("plustest_wait") != "")
+		{
+			setCvar("plustest_wait", "");
+			t = getTime();
+			for(i = 0; i < 40; i++)
+				wait 0.05;
+			short = getTime() - t;
+			t = getTime();
+			for(i = 0; i < 4; i++)
+				wait 1;
+			setCvar("plustest_waited", short + " " + (getTime() - t));
+		}
+		wait 0.05;
+	}
 }
 
 Callback_PlayerConnect()
@@ -730,13 +753,29 @@ def check_vote_reconnect(port, player, other, check):
             c.close()
 
 
+def check_wait_time(port, player, other, check):
+    """40 x wait 0.05 take 2 s and 4 x wait 1 take 4 s, to a frame, at any
+    sv_fps: the fraction of a frame a wait leaves carries to the next."""
+    frame = 1000 // player.fps
+    smoke_test.rcon(port, RCON, 'set plustest_waited ""')
+    smoke_test.rcon(port, RCON, 'set plustest_wait 1')
+    got = None
+    deadline = time.time() + 15
+    while time.time() < deadline and not got:
+        player.read_frames(0.5, False)
+        m = re.search(r'"plustest_waited" is: ?"(\d+) (\d+)', smoke_test.rcon(port, RCON, 'plustest_waited'))
+        got = m and (int(m.group(1)), int(m.group(2)))
+    check(f'wait time: wait 0.05 and wait 1 at sv_fps {player.fps}',
+          got is not None and abs(got[0] - 2000) <= frame and abs(got[1] - 4000) <= frame, f'{got} ms')
+
+
 # in this order: the turret mg_clip spawns stays in front of the player, where
 # shotgun_spread's pellets would hit it; lean_rewind moves the player away
 # from it, and leaves a second client that archive_time's bot must not take
 CHECKS = {'fast_reload': check_fast_reload, 'prone_peek': check_prone_peek, 'shotgun_spread': check_shotgun_spread,
           'mg_clip': check_mg_clip, 'mg_rate': check_mg_rate, 'snapshot_rate': check_snapshot_rate,
           'lean_rewind': check_lean_rewind, 'archive_time': check_archive_time,
-          'vote_reconnect': check_vote_reconnect}
+          'vote_reconnect': check_vote_reconnect, 'wait_time': check_wait_time}
 
 
 def main():

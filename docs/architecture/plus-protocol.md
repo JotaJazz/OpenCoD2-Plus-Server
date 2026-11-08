@@ -267,8 +267,13 @@ checks the MG at 50 ms a shot and the turret at 200 degrees a second; other
 builds fail it above 20 Hz. The stock maps' `trigger_hurt` are death zones,
 where the rate does not show; its grid was not run.
 
-What is left at 62.5 Hz: a `wait 0.05` lasts 48 ms, three frames, so a script
-loop of `wait 0.05` runs 4% faster.
+At 62.5 Hz a `wait 0.05` lasted 48 ms, three frames, so a script loop of
+`wait 0.05` ran 4% faster, and `wait 1` took 63 frames. Above 20 Hz the
+fraction of a frame left over now carries to the thread's next wait
+(`Scr_PlusWaitFrames` in `src/script/scr_vm.cpp`, by the thread's start id):
+40 `wait 0.05` take 2,000 ms and 4 `wait 1` take 4,000, as
+`plus_rules_test.py --only wait_time --fps 60` checks. A single wait still
+lasts whole frames, 48 or 64 ms. 20 Hz keeps the stock rounding.
 
 Checked and left alone: the 50 ms step in `SpectatorClientEndFrame` searches
 back through the archive and does not set the killcam's speed;

@@ -5,11 +5,18 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — Plus batch: exact wait
+
+- `wait` at 62.5 Hz: frames are whole, so `wait 0.05` took 3 (48 ms) and `wait 1` 63. Above 20 Hz the leftover fraction carries to the thread's next wait, in a table by start thread id (`GetStartLocalId`, so a wait in a called function shares its thread's carry); a reused id starts with at most half a frame of the old thread's. 20 Hz keeps the stock rounding, so `wait 0.075` there still takes 2 frames.
+
+## 2026-11-08 — Plus batch: votes and slow downloads
+
+- Votes: `ClientConnect` clears the whole client, so a reconnect forgot `EF_VOTED` and `teamVoteCount`. In `PLUS=1` `ClientDisconnect` leaves both in a table of `MAX_CLIENTS` records by IP and level start, and the next connect from that IP takes them; `EF_VOTED` only if the same vote (`level.voteTime`) still runs. Keyed by IP alone: a housemate who joins next inherits them. `plus_rules_test.py --only vote_reconnect` fails without it.
+- HTTP slow readers: the stall timer took any byte sent as progress. Linux only wakes `POLLOUT` once a good part of the send buffer frees, so a byte every 29 s never held a slot, but a reader at 4 KB/s did, for ever. A transfer must now move 1 MB in 30 s (half its share of a lower cap), and a late one is reset with `SO_LINGER` 0: a plain `close` left the kernel sending the 1.2 MB it had queued to a reader that never takes it, and the reader only sees the reset after the queued bytes. A real player under about 34 KB/s falls back to UDP.
+
 ## 2026-11-08 — Plus batch: downloads under load
 
 - Measured the server's own HTTP download at 62.5 Hz with 6 bots on `mp_toujane`: the gap between the snapshots a Plus client receives stays at p50 15.7 ms and p99 21 ms with no download, a download at 1024 KB/s, and `curl` fetching uncapped over loopback (about 1.5 GB/s), so the worker thread costs the match no frames. A downloader in the same Python process as the measuring client showed p99 97 ms from the GIL, not from the server. Not measured: the home uplink shared by a download and the game, which is what `sv_wwwMaxRate` is for.
-- Votes: `ClientConnect` clears the whole client, so a reconnect forgot `EF_VOTED` and `teamVoteCount`. In `PLUS=1` `ClientDisconnect` leaves both in a table of `MAX_CLIENTS` records by IP and level start, and the next connect from that IP takes them; `EF_VOTED` only if the same vote (`level.voteTime`) still runs. Keyed by IP alone: a housemate who joins next inherits them. `plus_rules_test.py --only vote_reconnect` fails without it.
-- HTTP slow readers: the stall timer took any byte sent as progress. Linux only wakes `POLLOUT` once a good part of the send buffer frees, so a byte every 29 s never held a slot, but a reader at 4 KB/s did, for ever. A transfer must now move 1 MB in 30 s (half its share of a lower cap), and a late one is reset with `SO_LINGER` 0: a plain `close` left the kernel sending the 1.2 MB it had queued to a reader that never takes it, and the reader only sees the reset after the queued bytes. A real player under about 34 KB/s falls back to UDP.
 
 ## 2026-11-08 — the Plus server serves its downloads
 
