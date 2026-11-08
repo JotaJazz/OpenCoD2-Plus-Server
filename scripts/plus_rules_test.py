@@ -688,12 +688,55 @@ def check_lean_rewind(port, player, other, check):
         shooter.close()
 
 
+def check_vote_reconnect(port, player, other, check):
+    """A player who voted and reconnects in the same vote cannot vote again
+    (ClientConnect clears the whole client). With two more clients the vote
+    neither passes nor fails while the voter is away."""
+    sid = int(re.search(r'"sv_serverid" is: ?"(-?\d+)', smoke_test.rcon(port, RCON, 'sv_serverid')).group(1))
+    clients = [Player(port) for _ in range(4)]
+    try:
+        third, fourth, voter, again = clients
+        for c, name in ((third, 'plusvote3'), (fourth, 'plusvote4'), (voter, 'plusvote')):
+            if c.connect(118, name) is not None or not c.request_gamestate(sid):
+                check('vote reconnect: the clients join', False)
+                return
+            c.enter_game(sid, 1.0)
+        player.command(sid, 'callvote map_restart')
+        pump([player, third, fourth, voter], 1)
+
+        def vote(c):
+            c.command(sid, 'vote no')
+            got = []
+            deadline = time.time() + 1.5
+            while time.time() < deadline:
+                for p in (player, third, fourth):
+                    p.read_frames(0.03, False)
+                got += [t for f in c.read_frames(0.03, False) for t in f['commands']]
+            return got
+        first = vote(voter)
+        check('vote reconnect: the first vote counts', any('GAME_VOTECAST' in t for t in first), str(first[-3:]))
+        voter.command(sid, 'disconnect')
+        pump([player, third, fourth], 1)
+        if again.connect(118, 'plusvote') is not None or not again.request_gamestate(sid):
+            check('vote reconnect: the voter joins again', False)
+            return
+        again.enter_game(sid, 1.0)
+        second = vote(again)
+        check('vote reconnect: a second vote after a reconnect is refused',
+              any('GAME_VOTEALREADYCAST' in t for t in second) and not any('GAME_VOTECAST' in t for t in second),
+              str(second[-3:]))
+    finally:
+        for c in clients:
+            c.close()
+
+
 # in this order: the turret mg_clip spawns stays in front of the player, where
 # shotgun_spread's pellets would hit it; lean_rewind moves the player away
 # from it, and leaves a second client that archive_time's bot must not take
 CHECKS = {'fast_reload': check_fast_reload, 'prone_peek': check_prone_peek, 'shotgun_spread': check_shotgun_spread,
           'mg_clip': check_mg_clip, 'mg_rate': check_mg_rate, 'snapshot_rate': check_snapshot_rate,
-          'lean_rewind': check_lean_rewind, 'archive_time': check_archive_time}
+          'lean_rewind': check_lean_rewind, 'archive_time': check_archive_time,
+          'vote_reconnect': check_vote_reconnect}
 
 
 def main():
