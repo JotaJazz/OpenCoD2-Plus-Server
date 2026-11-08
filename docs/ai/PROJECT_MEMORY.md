@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — Plus ID shared ban lists
+
+- `sv_banLists` names up to 8 lists signed with ECDSA P-256 like the connect proof (`PlusId_VerifyDigest`, now shared by `PlusId_Verify`); a thread per list fetches and verifies, the main thread adopts, caches in `plusid_lists/` and kicks. Any failure, an `updated` older than the copy in use, or over 4 MB / 100 000 entries keeps the last good copy; the cache applies at startup, so a host that is down lifts no bans. Lists never carry `guid` or `ip`.
+- `NetHttp_Fetch` capped every body at 65 000 bytes, the script VM's string limit; `NetHttpRequest` got a `maxBody` (default unchanged) so lists can be 4 MB. `PlusId_FormatTime` moved to `gmtime_r` because the list threads parse dates.
+- `sv_banLists` must be quoted in configs and on the command line: the tokenizer cuts at `//` and `;`. Lists honour `sv_httpCaFile` and `sv_httpAllowPrivate` but not `sv_httpAllowedHosts`. Open: a full 100 000-entry list takes about 50 MB of memory (`PlusIdBan` is ~520 bytes).
+
 ## 2026-11-08 — Plus ID verified at connect
 
 - A client proves an ECDSA P-256 key pair by signing `cod2plus-id-v1|<challenge>|<pa>`; `pk`, `ps` and `pa` are optional `connect` keys in every libcod build, so the Plus version stays 123 ([ADR 0019](../architecture/adr/0019-plus-id.md)). `pa` was added to the design's two keys: the server cannot know which of its addresses the client dialled (no destination address from `recvfrom`), and the private-address rule needs it.

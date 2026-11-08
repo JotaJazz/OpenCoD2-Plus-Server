@@ -79,16 +79,14 @@ inline bool PlusId_TextHash(int challenge, const char *serverAdr, unsigned char 
 	return mbedtls_sha256((const unsigned char *)text, strlen(text), hash, 0) == 0;
 }
 
-inline bool PlusId_Verify(const char *pkHex, const char *psHex, int challenge, const char *serverAdr, char idOut[22])
+// an ECDSA P-256 signature (r||s) of a SHA-256 hash by a compressed key;
+// the shared ban lists are signed the same way (plusid_lists.cpp)
+inline bool PlusId_VerifyDigest(const unsigned char pk[33], const unsigned char hash[32], const unsigned char rs[64])
 {
-	unsigned char pk[33], ps[64], hash[32];
 	mbedtls_ecp_group grp;
 	mbedtls_ecp_point q;
 	mbedtls_mpi r, s;
 	bool ok;
-
-	if ( !PlusId_FromHex(pkHex, pk, sizeof(pk)) || !PlusId_FromHex(psHex, ps, sizeof(ps)) || !PlusId_TextHash(challenge, serverAdr, hash) )
-		return false;
 
 	mbedtls_ecp_group_init(&grp);
 	mbedtls_ecp_point_init(&q);
@@ -98,18 +96,25 @@ inline bool PlusId_Verify(const char *pkHex, const char *psHex, int challenge, c
 	// reading a compressed point derives y, so a point not on the curve fails here
 	ok = mbedtls_ecp_group_load(&grp, MBEDTLS_ECP_DP_SECP256R1) == 0
 	     && ( pk[0] == 0x02 || pk[0] == 0x03 )
-	     && mbedtls_ecp_point_read_binary(&grp, &q, pk, sizeof(pk)) == 0
+	     && mbedtls_ecp_point_read_binary(&grp, &q, pk, 33) == 0
 	     && mbedtls_ecp_check_pubkey(&grp, &q) == 0
-	     && mbedtls_mpi_read_binary(&r, ps, 32) == 0
-	     && mbedtls_mpi_read_binary(&s, ps + 32, 32) == 0
-	     && mbedtls_ecdsa_verify(&grp, hash, sizeof(hash), &q, &r, &s) == 0
-	     && PlusId_FromPublicKey(pk, idOut);
+	     && mbedtls_mpi_read_binary(&r, rs, 32) == 0
+	     && mbedtls_mpi_read_binary(&s, rs + 32, 32) == 0
+	     && mbedtls_ecdsa_verify(&grp, hash, 32, &q, &r, &s) == 0;
 
 	mbedtls_mpi_free(&s);
 	mbedtls_mpi_free(&r);
 	mbedtls_ecp_point_free(&q);
 	mbedtls_ecp_group_free(&grp);
 	return ok;
+}
+
+inline bool PlusId_Verify(const char *pkHex, const char *psHex, int challenge, const char *serverAdr, char idOut[22])
+{
+	unsigned char pk[33], ps[64], hash[32];
+
+	return PlusId_FromHex(pkHex, pk, sizeof(pk)) && PlusId_FromHex(psHex, ps, sizeof(ps)) && PlusId_TextHash(challenge, serverAdr, hash)
+	       && PlusId_VerifyDigest(pk, hash, ps) && PlusId_FromPublicKey(pk, idOut);
 }
 
 // A DRBG seeded from the system entropy, for key generation and signing

@@ -241,8 +241,9 @@ struct PlusIdBan
 	char ip[16];       // "" without one
 };
 const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, int guid, char idOut[22], int *flagsOut);
-// the live ban of an ID, local first; *listName is NULL for a local one. Valid until the next call
-const PlusIdBan *PlusId_FindBan(const char *id, const char **listName);
+// the live ban of an ID, local first; *listName is NULL for a local one, *appeal
+// "" without one. Valid until the next call or list change
+const PlusIdBan *PlusId_FindBan(const char *id, const char **listName, const char **appeal = NULL);
 void PlusId_KickBanned();
 const char *PlusId_FlagsForClient(int clientNum);
 // ban dates as in the list format: "YYYY-MM-DD" (00:00 UTC) or "YYYY-MM-DDTHH:MM:SSZ", nothing else
@@ -259,6 +260,16 @@ void PlusId_Shutdown();
 void PlusId_RegisterDvars();
 void PlusId_SpawnServer();
 void PlusId_AddCommands();
+// shared helpers for plusid_lists.cpp; PlusId_ParseBan and the time functions are thread-safe
+struct yyjson_val;
+bool PlusId_ParseBan(yyjson_val *e, PlusIdBan *ban, bool shared);
+void PlusId_Path(const char *name, char *path, size_t size);
+bool PlusId_Replace(const char *tmp, const char *path);
+// plusid_lists.cpp: the signed shared ban lists of sv_banLists
+void PlusIdLists_RegisterDvars();
+void PlusIdLists_Frame();
+const PlusIdBan *PlusIdLists_Find(const char *id, const char **listName, const char **appeal);
+void PlusIdLists_Status_f();
 const char *SV_ModifyConfigstringIwdChkSum( client_t *client, int index );
 VariableValue* Scr_GetValue(unsigned int param);
 

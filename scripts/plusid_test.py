@@ -8,9 +8,9 @@ and the server's verdict is read back with rcon plusIdStatus. The folder must
 hold only the stock iwds. Exits with 0 when every check passes. The helpers
 (make_key, sign, connect_with_id...) are for the other Plus ID tests.
 """
-import argparse, base64, hashlib, json, os, re, secrets, subprocess, sys, tempfile, time, zipfile
+import argparse, base64, functools, hashlib, http.server, json, os, re, secrets, subprocess, sys, tempfile, threading, time, zipfile
 
-import cod2client, smoke_test
+import banlist, cod2client, smoke_test
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RCON = 'plusid_rcon'
@@ -415,6 +415,114 @@ def run_ban_cases(port, protocol, log_path, game_log, bans_path, check):
             client.close()
 
 
+def check_lists(args, check):
+    """Shared ban lists served by a local HTTP server, refreshed every minute:
+    five lists checked at the same refresh, then a restart with the HTTP
+    server down."""
+    with tempfile.TemporaryDirectory(prefix='cod2_plusid_lists_') as home, \
+            tempfile.TemporaryDirectory(prefix='cod2_plusid_www_') as www, \
+            tempfile.TemporaryDirectory(prefix='cod2_plusid_maint_') as maint:
+        make_home(home)
+        key = os.path.join(maint, 'maint')
+        banlist.keygen(key)
+        pub = banlist.read(key + '.pub', 'r').strip()
+        handler = functools.partial(type('Quiet', (http.server.SimpleHTTPRequestHandler,), {'log_message': lambda *a: None}), directory=www)
+        # a refused body closes the connection early, which is no error here
+        httpd = type('QuietServer', (http.server.ThreadingHTTPServer,), {'handle_error': lambda *a: None})(('127.0.0.1', 0), handler)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        base = f'http://127.0.0.1:{httpd.server_address[1]}/'
+        names = ['ban', 'badsig', 'rollback', 'big', 'kick']
+        ids = {}
+
+        def publish(name, entries, updated='2026-11-08T12:00:00Z', pad=0, good=True):
+            path = os.path.join(www, name + '.json')
+            doc = {'format': 1, 'name': 'List ' + name, 'appeal': 'https://example.com/appeal', 'updated': updated,
+                   'entries': [{'id': i, 'reason': 'aimbot', 'date': '2026-11-01', 'expires': None} for i in entries]}
+            with open(path, 'w') as f:
+                f.write(json.dumps(doc) + ' ' * pad)
+            banlist.sign(path, key + '.key')
+            if not good:
+                with open(path, 'a') as f:
+                    f.write(' ')
+
+        keys = {n: make_key() for n in names + ['added', 'rolled']}
+        ids = {n: plus_id(public_key(k)) for n, k in keys.items()}
+        for n in names:
+            publish(n, [ids[n]] if n != 'kick' else [])
+        lists = ';'.join(f'{base}{n}.json|{pub}' for n in names) + f';{base}x.json|zz'
+        port = smoke_test.free_port()
+        log_path = os.path.join(home, 'out.log')
+        extra = ['+set', 'sv_banLists', f'"{lists}"', '+set', 'sv_banListRefresh', '1', '+set', 'sv_httpAllowPrivate', '1']
+        clients = []
+
+        def join(name):
+            client, reply = connect_with_id(port, keys[name], None, name, args.protocol)
+            clients.append(client)
+            return reply
+
+        def state(name):
+            for line in smoke_test.rcon(port, RCON, 'banListStatus').splitlines():
+                if f'{base}{name}.json' in line:
+                    return line
+            return ''
+
+        def log():
+            return open(log_path, encoding='latin-1').read()
+
+        server = launch(args.binary, args.game_dir, home, port, args.map, log_path, extra)
+        try:
+            up = smoke_test.wait_for(lambda: server.poll() is not None or smoke_test.query(port, 'getinfo x'), 150) and server.poll() is None
+            check('lists server runs', up)
+            if not up:
+                return
+            check('list_bad_key_skipped', smoke_test.wait_for(lambda: f'plusid: malformed key for list {base}x.json' in log(), 10), log()[-500:])
+            check('lists_fetched', smoke_test.wait_for(lambda: all(' ok' in state(n) for n in names), 15),
+                  smoke_test.rcon(port, RCON, 'banListStatus'))
+            reply = join('ban')
+            check('list_ban', reply is not None and 'You are banned by List ban: aimbot. Appeal: https://example.com/appeal' in reply, str(reply))
+            cached = os.listdir(os.path.join(home, 'plusid_lists')) if os.path.isdir(os.path.join(home, 'plusid_lists')) else []
+            check('list_cache_written', len(cached) == 2 * len(names), str(cached))
+            join('kick')
+            check('list kick player in', 'kick' in status(port), str(status(port)))
+
+            publish('badsig', [ids['added']], '2026-11-09T00:00:00Z', good=False)
+            publish('rollback', [ids['rolled']], '2026-11-07T00:00:00Z')
+            publish('big', [ids['big']], '2026-11-09T00:00:00Z', pad=4 * 1024 * 1024)
+            publish('kick', [ids['kick']], '2026-11-09T00:00:00Z')
+            # the next refresh is at most a minute away
+            kicked = smoke_test.wait_for(lambda: 'kick' not in status(port), 75)
+            check('list_kicks_connected', kicked and 'plusid: dropping banned ' + ids['kick'] in log()
+                  and 'List kick' in log(), log()[-800:])
+            smoke_test.wait_for(lambda: 'signature' in state('badsig') and 'older' in state('rollback') and 'large' in state('big'), 15)
+            reply = join('badsig')
+            check('bad_sig_keeps_last', 'bad signature' in state('badsig') and reply is not None and 'List badsig' in reply
+                  and join('added') is None, f'{state("badsig")} {reply}')
+            check('rollback', 'older' in state('rollback') and join('rolled') is None and join('rollback') is not None, state('rollback'))
+            check('too_big', 'large' in state('big') and join('big') is not None, state('big'))
+        finally:
+            for client in clients:
+                client.close()
+            clients.clear()
+            stop(server)
+            httpd.shutdown()
+            httpd.server_close()
+
+        # down: the cached copies apply and the log says so
+        open(log_path, 'w').close()
+        server = launch(args.binary, args.game_dir, home, port, args.map, log_path, extra)
+        try:
+            up = smoke_test.wait_for(lambda: server.poll() is not None or smoke_test.query(port, 'getinfo x'), 150) and server.poll() is None
+            smoke_test.wait_for(lambda: 'keeping the copy of 2026-11-08T12:00:00Z' in log(), 15)
+            reply = join('ban') if up else None
+            check('list_cached_when_offline', up and reply is not None and 'List ban' in reply and 'from the cache' in log()
+                  and 'keeping the copy of 2026-11-08T12:00:00Z' in log(), log()[-800:])
+            check('the lists server still runs', server.poll() is None, f'exit code {server.poll()}')
+        finally:
+            for client in clients:
+                client.close()
+            stop(server)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('game_dir')
@@ -453,6 +561,7 @@ def main():
             print('\n--- last lines of the server log ---')
             print(open(log_path, encoding='latin-1').read()[-3000:])
     check_shared_seen_file(args, check)
+    check_lists(args, check)
     print('\n' + ('FAILED: ' + ', '.join(failures) if failures else 'All checks passed'))
     return 1 if failures else 0
 

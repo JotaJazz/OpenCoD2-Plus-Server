@@ -11,8 +11,9 @@ them ignore them.
 |---|---|
 | Curve, hash | P-256 (secp256r1), SHA-256 |
 | Shared code | `src/libcod/plusid.hpp` (inline, no engine headers, no state); the client vendors it |
-| Server code | `src/libcod/plusid.cpp`, hooks in `SV_DirectConnect` and `SV_FreeClient` |
-| Test | `scripts/plusid_test.py` ([testing](../development/testing.md)) |
+| Server code | `src/libcod/plusid.cpp`, hooks in `SV_DirectConnect` and `SV_FreeClient`; shared ban lists in `src/libcod/plusid_lists.cpp` |
+| Maintainers' tool | `scripts/banlist.py` (shared ban lists) |
+| Test | `scripts/plusid_test.py`, `scripts/test_banlist.py` ([testing](../development/testing.md)) |
 
 ## Handshake
 
@@ -94,6 +95,9 @@ NAT must set it to the address players dial.
 | `plusIdStatus` | command | one line per player: `num name id playtime first_seen_ago flags`, `-` without an ID or a flag |
 | `banPlusId <id\|clientnum> <minutes> <reason...>` | command | bans an ID (`minutes` 0 is permanent) and drops it; a number is a client slot, whose guid and IP are kept in the ban; `by` is `rcon` |
 | `unbanPlusId <id>` | command | lifts a local ban |
+| `sv_banLists` | `""` | shared ban lists, `url|pubhex[;url|pubhex...]`, up to 8 (see Shared ban lists) |
+| `sv_banListRefresh` | `30` | minutes between fetches of each list, 1 to 10080 |
+| `banListStatus` | command | one line per list: `num url "name" entries updated status`, where status is `ok`, `fetching` or the last error |
 
 Scripts read a player's ID with `self getPlusId()` (`""` without one), the
 seconds it has played with `getPlusIdPlaytime()` and the seconds since it was
@@ -115,7 +119,8 @@ log says `plusid: cannot read <file>`. While the file is bad, `banPlusId` and
 overwrite it; a file that reads again clears that. An expired ban (`expires` passed) is
 ignored, not deleted.
 
-`PlusId_CheckConnect` looks the verified ID up (`PlusId_FindBan`) before the
+`PlusId_CheckConnect` looks the verified ID up (`PlusId_FindBan`: local bans
+first, then the shared lists) before the
 `sv_requirePlusId` check and refuses with `You are banned from this server:
 <reason>`; `banPlusId` also drops that ID when connected (`PlusId_KickBanned`).
 Only slots in CS_CONNECTED or later count; a zombie keeps its ID until freed.
@@ -137,3 +142,70 @@ each other's time; two saving in the same instant can lose one interval. Time th
 that exists but cannot be read is never overwritten: the server logs
 `plusid: cannot read <file>, playtime not saved`. The server never refuses or
 treats a player differently for how old an ID is.
+
+### Shared ban lists
+
+A community can keep one ban list for many servers. Each list is a JSON file
+at a URL and its signature at `<url>.sig`: the base64 of the raw r‖s (64
+bytes) of an ECDSA P-256 signature over SHA-256 of the file's exact bytes,
+made by the list's maintainer. Servers name the lists they trust with
+`sv_banLists "url|pubhex;url|pubhex"`, where `pubhex` is the maintainer's
+compressed public key (66 hex characters); the quotes are needed in a config
+and on the command line, where `;` ends a command and `//` starts a comment.
+
+```json
+{
+  "format": 1,
+  "name": "CoD2 Community",
+  "appeal": "https://github.com/<org>/<repo>/issues",
+  "updated": "2026-11-08T12:00:00Z",
+  "entries": [
+    { "id": "P-ABCD-EFGH-IJKL-MNOP", "reason": "aimbot", "date": "2026-11-01",
+      "expires": null, "by": "admin_handle", "evidence": "https://..." }
+  ]
+}
+```
+
+Entries are those of the local bans, with the same dates and lengths, but a
+list never publishes `guid` or `ip`: an entry with either rejects the list,
+since publishing them exposes players and would let someone with a shared CD
+key frame another. `name` (up to 63 bytes) is required, `appeal` (up to 255) is
+optional, `updated` uses the date format of the entries.
+
+Each list is fetched on its own thread every `sv_banListRefresh` minutes, and
+at once when `sv_banLists` changes; the thread never touches the engine, the
+main thread takes the result in the next frame. A version is taken only whole:
+a body over 4 MB, more than 100 000 entries, a bad signature, a broken or
+hostile JSON, a field out of range, a network error or an `updated` older than
+the copy in use (a replayed old list) all keep the last good copy, show in
+`banListStatus` and log `plusid: list <url> not updated: <error>; keeping the
+copy of <updated>`. An equal `updated` is accepted (the same file served
+again). A good version replaces the copy in memory, is written to
+`plusid_lists/<sha256 of the url in hex>.json` and `.sig` in `fs_homepath`
+through `<file>.tmp.<pid>`, and drops the connected players it bans.
+
+At startup the cached copy is verified again and applies (`plusid: list <name>
+(<url>) from the cache`) until a fetch brings a newer one, so a list host that
+is down does not lift its bans. A list with no good copy yet does not apply,
+and the log says so at startup and at each failure; nobody is locked out.
+Local bans come first; a list ban refuses with `You are banned by <name>:
+<reason>. Appeal: <appeal>` (without the appeal part when the list has none).
+An entry with a malformed key in `sv_banLists` is skipped with a log line.
+Lists use the HTTP client of `httpFetch` (`sv_httpCaFile` for https,
+`sv_httpAllowPrivate 1` for a list on a private address), but not
+`sv_httpAllowedHosts`, which is for scripts.
+
+Maintainers use `scripts/banlist.py` (the `openssl` CLI):
+
+| Command | Does |
+|---|---|
+| `keygen OUT` | writes `OUT.key` (private PEM, keep it secret) and `OUT.pub` (the hex for `sv_banLists`) |
+| `sign LIST KEY` | writes `LIST.sig` |
+| `verify LIST PUBHEX` | exit 0 when `LIST.sig` is good for the key, 1 otherwise |
+| `check LIST` | exit 0 when servers take the list's format and limits |
+
+The recommended workflow: the list lives in a GitHub repository, additions and
+appeals come as pull requests (with evidence), and the maintainer runs
+`banlist.py check`, signs on merge and commits the `.sig` with the list; the
+raw URLs of both files go into `sv_banLists`. Only the key holder can publish a
+version servers take, so the hosting can be anywhere.

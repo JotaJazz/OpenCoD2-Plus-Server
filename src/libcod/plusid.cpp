@@ -113,11 +113,28 @@ static bool PlusId_SignedAddress(const char *text, netadr_t *adr)
 
 static int PlusId_EvasionFlags(const char *id, netadr_t from, int guid);
 
+// the refusal of an ID's live ban, NULL without one; a static buffer, valid until the next call
+static const char *PlusId_BanText(const char *id, const char **listName)
+{
+	static char text[512];
+	const char *appeal;
+	const PlusIdBan *ban = PlusId_FindBan(id, listName, &appeal);
+
+	if ( !ban )
+		return NULL;
+	if ( !*listName )
+		Com_sprintf(text, sizeof(text), "You are banned from this server: %s", ban->reason);
+	else if ( *appeal )
+		Com_sprintf(text, sizeof(text), "You are banned by %s: %s. Appeal: %s", *listName, ban->reason, appeal);
+	else
+		Com_sprintf(text, sizeof(text), "You are banned by %s: %s", *listName, ban->reason);
+	return text;
+}
+
 // a ban refusal is a static buffer, which the caller sends at once
 const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, int guid, char idOut[22], int *flagsOut)
 {
-	static char banText[192];
-	const PlusIdBan *ban;
+	const char *banText, *listName;
 	static leakyBucket_t bucket;
 	char pk[PLUSID_PK_HEX + 2], ps[PLUSID_PS_HEX + 2], pa[64];
 	netadr_t signedAdr;
@@ -149,10 +166,9 @@ const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, in
 		}
 	}
 
-	if ( idOut[0] && ( ban = PlusId_FindBan(idOut, NULL) ) )
+	if ( idOut[0] && ( banText = PlusId_BanText(idOut, &listName) ) )
 	{
-		Com_Printf("plusid: refused banned %s from %s\n", idOut, NET_AdrToString(from));
-		Com_sprintf(banText, sizeof(banText), "You are banned from this server: %s", ban->reason);
+		Com_Printf("plusid: refused banned %s from %s%s%s\n", idOut, NET_AdrToString(from), listName ? " by " : "", listName ? listName : "");
 		return banText;
 	}
 
@@ -166,7 +182,7 @@ const char *PlusId_CheckConnect(netadr_t from, char *userinfo, int challenge, in
 }
 
 // a file name from a dvar or a fixed one: absolute as it is, else under fs_homepath
-static void PlusId_Path(const char *name, char *path, size_t size)
+void PlusId_Path(const char *name, char *path, size_t size)
 {
 	const char *home = Dvar_FindVar("fs_homepath") ? Dvar_FindVar("fs_homepath")->current.string : "";
 
@@ -177,7 +193,7 @@ static void PlusId_Path(const char *name, char *path, size_t size)
 }
 
 // the tmp file renamed over the file, which Windows only does with this call
-static bool PlusId_Replace(const char *tmp, const char *path)
+bool PlusId_Replace(const char *tmp, const char *path)
 {
 #ifdef _WIN32
 	return MoveFileExA(tmp, path, MOVEFILE_REPLACE_EXISTING);
@@ -313,6 +329,7 @@ static void PlusId_Tick()
 
 void PlusId_Frame()
 {
+	PlusIdLists_Frame();
 	PlusId_Tick();
 	if ( time(NULL) - lastSave >= 60 )
 		PlusId_Save();
@@ -397,6 +414,7 @@ void PlusId_RegisterDvars()
 	sv_requirePlusId = Dvar_RegisterBool("sv_requirePlusId", false, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	sv_plusIdNotice = Dvar_RegisterString("sv_plusIdNotice", "", DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 	sv_plusIdSeenFile = Dvar_RegisterString("sv_plusIdSeenFile", "plusid_seen.txt", DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
+	PlusIdLists_RegisterDvars();
 }
 
 // at the first map, when the config has run and net_ip is set
@@ -458,12 +476,18 @@ bool PlusId_ParseTime(const char *text, long long *out)
 void PlusId_FormatTime(long long t, bool dateOnly, char out[21])
 {
 	time_t tt = (time_t)t;
-	struct tm *tm = gmtime(&tt);
+	struct tm tm;
+	// the reentrant gmtime: the list threads parse dates too
+#ifdef _WIN32
+	bool ok = gmtime_s(&tm, &tt) == 0;
+#else
+	bool ok = gmtime_r(&tt, &tm) != NULL;
+#endif
 
-	if ( !tm || tm->tm_year > 8099 )
+	if ( !ok || tm.tm_year > 8099 )
 		strcpy(out, dateOnly ? "1970-01-01" : "1970-01-01T00:00:00Z");
 	else
-		strftime(out, 21, dateOnly ? "%Y-%m-%d" : "%Y-%m-%dT%H:%M:%SZ", tm);
+		strftime(out, 21, dateOnly ? "%Y-%m-%d" : "%Y-%m-%dT%H:%M:%SZ", &tm);
 }
 
 static bool PlusId_ValidId(const char *id)
@@ -534,6 +558,25 @@ static bool PlusId_JsonNumber(yyjson_val *obj, const char *key, long long *to, l
 	return true;
 }
 
+// an entry of the bans file or of a shared list; a shared one must not have guid or ip
+bool PlusId_ParseBan(yyjson_val *e, PlusIdBan *ban, bool shared)
+{
+	yyjson_val *id = yyjson_obj_get(e, "id");
+	long long guid;
+
+	memset(ban, 0, sizeof(*ban));
+	if ( !yyjson_is_obj(e) || !yyjson_is_str(id) || !PlusId_ValidId(yyjson_get_str(id))
+	     || ( shared && ( yyjson_obj_get(e, "guid") || yyjson_obj_get(e, "ip") ) )
+	     || !PlusId_JsonText(e, "reason", ban->reason, sizeof(ban->reason)) || !PlusId_JsonText(e, "by", ban->by, sizeof(ban->by))
+	     || !PlusId_JsonText(e, "evidence", ban->evidence, sizeof(ban->evidence)) || !PlusId_JsonText(e, "ip", ban->ip, sizeof(ban->ip))
+	     || !PlusId_ValidIp(ban->ip) || !PlusId_JsonTime(e, "date", &ban->date)
+	     || !PlusId_JsonTime(e, "expires", &ban->expires) || !PlusId_JsonNumber(e, "guid", &guid, INT_MIN, INT_MAX) )
+		return false;
+	ban->guid = (int)guid;
+	strcpy(ban->id, yyjson_get_str(id));
+	return true;
+}
+
 static bool PlusId_StatBans(const char *path, long long *size, long long *mtime)
 {
 	struct stat st;
@@ -579,19 +622,10 @@ static void PlusId_LoadBans()
 	yyjson_arr_foreach(entries, i, max, e)
 	{
 		PlusIdBan ban;
-		yyjson_val *id = yyjson_obj_get(e, "id");
-		long long guid;
 
-		memset(&ban, 0, sizeof(ban));
-		ok = ok && yyjson_is_obj(e) && yyjson_is_str(id) && PlusId_ValidId(yyjson_get_str(id))
-		     && PlusId_JsonText(e, "reason", ban.reason, sizeof(ban.reason)) && PlusId_JsonText(e, "by", ban.by, sizeof(ban.by))
-		     && PlusId_JsonText(e, "evidence", ban.evidence, sizeof(ban.evidence)) && PlusId_JsonText(e, "ip", ban.ip, sizeof(ban.ip))
-		     && PlusId_ValidIp(ban.ip) && PlusId_JsonTime(e, "date", &ban.date)
-		     && PlusId_JsonTime(e, "expires", &ban.expires) && PlusId_JsonNumber(e, "guid", &guid, INT_MIN, INT_MAX);
+		ok = ok && PlusId_ParseBan(e, &ban, false);
 		if ( !ok )
 			break;
-		ban.guid = (int)guid;
-		strcpy(ban.id, yyjson_get_str(id));
 		list.push_back(ban);
 	}
 	yyjson_doc_free(doc);
@@ -653,20 +687,28 @@ static bool PlusId_WriteBans()
 	return ok;
 }
 
-const PlusIdBan *PlusId_FindBan(const char *id, const char **listName)
+const PlusIdBan *PlusId_FindBan(const char *id, const char **listName, const char **appeal)
 {
 	long long now = time(NULL);
+	const char *name, *link;
 
-	// the shared lists (not there yet) would come after the local bans
 	if ( listName )
 		*listName = NULL;
+	if ( appeal )
+		*appeal = "";
 	PlusId_LoadBans();
 	for ( size_t k = 0; k < localBans.size(); k++ )
 	{
 		if ( !strcmp(localBans[k].id, id) && ( !localBans[k].expires || localBans[k].expires > now ) )
 			return &localBans[k];
 	}
-	return NULL;
+
+	const PlusIdBan *ban = PlusIdLists_Find(id, &name, &link);
+	if ( ban && listName )
+		*listName = name;
+	if ( ban && appeal )
+		*appeal = link;
+	return ban;
 }
 
 // the marks a player gets for matching a live local ban of another ID by guid or by IP
@@ -697,12 +739,12 @@ void PlusId_KickBanned()
 	for ( int i = 0; i < sv_maxclients->current.integer; i++ )
 	{
 		client_t *cl = &svs.clients[i];
-		const PlusIdBan *ban;
+		const char *text, *listName;
 
-		if ( cl->state >= CS_CONNECTED && plusIds[i][0] && ( ban = PlusId_FindBan(plusIds[i], NULL) ) )
+		if ( cl->state >= CS_CONNECTED && plusIds[i][0] && ( text = PlusId_BanText(plusIds[i], &listName) ) )
 		{
-			Com_Printf("plusid: dropping banned %s (%s)\n", plusIds[i], cl->name);
-			SV_DropClient(cl, va("You are banned from this server: %s", ban->reason));
+			Com_Printf("plusid: dropping banned %s (%s)%s%s\n", plusIds[i], cl->name, listName ? " by " : "", listName ? listName : "");
+			SV_DropClient(cl, text);
 		}
 	}
 }
@@ -829,6 +871,7 @@ void PlusId_AddCommands()
 	Cmd_AddCommand("plusIdStatus", PlusId_Status_f);
 	Cmd_AddCommand("banPlusId", PlusId_Ban_f);
 	Cmd_AddCommand("unbanPlusId", PlusId_Unban_f);
+	Cmd_AddCommand("banListStatus", PlusIdLists_Status_f);
 }
 
 #endif
