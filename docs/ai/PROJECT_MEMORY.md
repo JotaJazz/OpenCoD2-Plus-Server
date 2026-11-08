@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — Plus batch 3: error counts and launchers
+
+- The grouped script errors kept a count that only printed with the next repeat, so the last 10 s of an error that stopped never showed. The count now prints from `Scr_PlusFlushRuntimeErrors`, each server frame, and a message quiet for a whole window prints in full again; `error_repeats` waits for that third block.
+- The Windows launcher takes the config as a second argument (`iniciar_cod2rev.bat internet 20hz.cfg`). Without quotes: the 32-bit Windows server read `+exec "t.cfg"` as a bad `exec` and printed its usage; `+exec t.cfg` runs it.
+
 ## 2026-11-08 — the antilag rewinds the stance's animation
 
 - The pose rewind left the XAnim tree at the present, so a player who crouched or went prone since the shot had the new animation with the old flags. In `PLUS=1` the per-frame pose keeps the tree's active entries (16 at most, 6 seen) and the antilag sets the tree to them, reusing, taking out or allocating infos, and puts it back; if a script the shot ran rebuilt the tree (a dropped player) it only frees what it took out. 170 ns more per player and frame.
