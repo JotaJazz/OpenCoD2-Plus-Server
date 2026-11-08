@@ -1,6 +1,7 @@
 // the STL before the engine headers
 #include "net_http.hpp"
 #include <algorithm>
+#include <exception>
 #include <string>
 #include <vector>
 
@@ -37,14 +38,24 @@
 static dvar_t *sv_banLists;
 static dvar_t *sv_banListRefresh;
 
+// what a refusal needs of an entry, a third of a PlusIdBan: a full list
+// holds 100 000 of them, and a shared list never has guid or ip
+struct PlusIdListBan
+{
+	char id[22];
+	char reason[128];
+	long long expires;
+};
+
 // a version whose signature and format were checked
 struct PlusIdListVersion
 {
-	std::string json, sig;
+	std::string json, sig;      // only until cached
+	unsigned char hash[32];     // SHA-256 of json
 	char name[64];
 	char appeal[256];
 	long long updated;
-	std::vector<PlusIdBan> bans; // sorted by id
+	std::vector<PlusIdListBan> bans; // sorted by id
 };
 
 // a fetch on its own thread; the thread and the main thread each hold a reference
@@ -53,12 +64,15 @@ struct PlusIdListJob
 	// set before the thread starts, then only read
 	NetHttpRequest list, sig;
 	unsigned char pk[33];
+	bool haveHash;
+	unsigned char hash[32];     // of the copy in use: the same bytes are not parsed again
 	volatile int cancel;
 	// lists_mutex
 	int refs;
 	bool done;
 	// the thread's until done is set, then the main thread's
 	bool ok;
+	bool unchanged;
 	PlusIdListVersion version;
 	std::string error;
 };
@@ -87,15 +101,17 @@ void PlusIdLists_RegisterDvars()
 	sv_banListRefresh = Dvar_RegisterInt("sv_banListRefresh", 30, 1, 10080, DVAR_ARCHIVE | DVAR_CHANGEABLE_RESET);
 }
 
-static bool PlusIdLists_ById(const PlusIdBan &a, const PlusIdBan &b)
+static bool PlusIdLists_ById(const PlusIdListBan &a, const PlusIdListBan &b)
 {
 	return strcmp(a.id, b.id) < 0;
 }
 
-// Checks the signature, then the format: the JSON is hostile. Thread-safe.
-static bool PlusIdLists_Read(const unsigned char pk[33], PlusIdListVersion *v, std::string *error)
+// Checks the signature, then the format: the JSON is hostile. With same, a
+// version whose hash is that one is only verified (*unchanged). Thread-safe;
+// throws std::bad_alloc.
+static bool PlusIdLists_Read(const unsigned char pk[33], const unsigned char *same, PlusIdListVersion *v, bool *unchanged, std::string *error)
 {
-	unsigned char hash[32], rs[64];
+	unsigned char *hash = v->hash, rs[64];
 	size_t length, start = v->sig.find_first_not_of(" \t\r\n"), end = v->sig.find_last_not_of(" \t\r\n");
 
 	if ( v->json.size() > PLUSID_LIST_BYTES )
@@ -110,6 +126,9 @@ static bool PlusIdLists_Read(const unsigned char pk[33], PlusIdListVersion *v, s
 		*error = "bad signature";
 		return false;
 	}
+	*unchanged = same && !memcmp(same, hash, 32);
+	if ( *unchanged )
+		return true;
 
 	yyjson_doc *doc = yyjson_read(v->json.data(), v->json.size(), 0);
 	yyjson_val *root = yyjson_doc_get_root(doc), *format = yyjson_obj_get(root, "format"), *name = yyjson_obj_get(root, "name");
@@ -131,18 +150,31 @@ static bool PlusIdLists_Read(const unsigned char pk[33], PlusIdListVersion *v, s
 	else
 	{
 		error->clear();
-		yyjson_arr_foreach(entries, i, max, e)
+		try
 		{
-			PlusIdBan ban;
-
-			if ( !PlusId_ParseBan(e, &ban, true) )
+			v->bans.reserve(yyjson_arr_size(entries));
+			yyjson_arr_foreach(entries, i, max, e)
 			{
-				char text[64];
-				snprintf(text, sizeof(text), "bad format: entry %u", (unsigned int)i);
-				*error = text;
-				break;
+				PlusIdBan ban;
+				PlusIdListBan entry;
+
+				if ( !PlusId_ParseBan(e, &ban, true) )
+				{
+					char text[64];
+					snprintf(text, sizeof(text), "bad format: entry %u", (unsigned int)i);
+					*error = text;
+					break;
+				}
+				memcpy(entry.id, ban.id, sizeof(entry.id));
+				memcpy(entry.reason, ban.reason, sizeof(entry.reason));
+				entry.expires = ban.expires;
+				v->bans.push_back(entry);
 			}
-			v->bans.push_back(ban);
+		}
+		catch ( ... )
+		{
+			yyjson_doc_free(doc);
+			throw;
 		}
 	}
 
@@ -193,9 +225,20 @@ static void *PlusIdLists_Worker(void *arg)
 {
 	PlusIdListJob *job = (PlusIdListJob *)arg;
 
-	job->ok = PlusIdLists_Get(&job->list, &job->cancel, "", &job->version.json, &job->error)
-	          && PlusIdLists_Get(&job->sig, &job->cancel, "signature file: ", &job->version.sig, &job->error)
-	          && PlusIdLists_Read(job->pk, &job->version, &job->error);
+	// out of memory is a failed fetch: an exception left here would end the server
+	try
+	{
+		job->ok = PlusIdLists_Get(&job->list, &job->cancel, "", &job->version.json, &job->error)
+		          && PlusIdLists_Get(&job->sig, &job->cancel, "signature file: ", &job->version.sig, &job->error)
+		          && PlusIdLists_Read(job->pk, job->haveHash ? job->hash : NULL, &job->version, &job->unchanged, &job->error);
+	}
+	catch ( const std::exception &e )
+	{
+		job->ok = false;
+		std::vector<PlusIdListBan>().swap(job->version.bans);
+		std::string().swap(job->version.json);
+		job->error = e.what();
+	}
 
 	pthread_mutex_lock(&lists_mutex);
 	job->done = true;
@@ -251,9 +294,11 @@ static void PlusIdLists_Start(PlusIdList *l)
 	job->list.maxBody = PLUSID_LIST_BYTES;
 	job->sig.maxBody = PLUSID_SIG_BYTES;
 	memcpy(job->pk, l->pk, sizeof(job->pk));
+	job->haveHash = l->have;
+	memcpy(job->hash, l->current.hash, sizeof(job->hash));
 	job->cancel = 0;
 	job->refs = 2;
-	job->done = job->ok = false;
+	job->done = job->ok = job->unchanged = false;
 
 	if ( !Http_StartThread(PlusIdLists_Worker, job) )
 	{
@@ -289,7 +334,13 @@ static void PlusIdLists_Adopt(PlusIdList *l, PlusIdListJob *job)
 		PlusIdLists_Failed(l, job->error);
 		return;
 	}
-	// equal is the same content served again
+	// the same bytes again
+	if ( job->unchanged )
+	{
+		l->error.clear();
+		return;
+	}
+	// an equal updated is the same content served again
 	if ( l->have && job->version.updated < l->current.updated )
 	{
 		PlusId_FormatTime(job->version.updated, false, now);
@@ -298,15 +349,14 @@ static void PlusIdLists_Adopt(PlusIdList *l, PlusIdListJob *job)
 		return;
 	}
 	l->error.clear();
-	if ( l->have && job->version.json == l->current.json )
-		return;
-
 	std::swap(l->current, job->version);
 	l->have = true;
 	PlusId_FormatTime(l->current.updated, false, now);
 	Com_Printf("plusid: list %s (%s) updated %s, %d entries\n", l->current.name, l->url.c_str(), now, (int)l->current.bans.size());
 	if ( !PlusIdLists_WriteFile(va("%s.json", l->cache), l->current.json) || !PlusIdLists_WriteFile(va("%s.sig", l->cache), l->current.sig) )
 		Com_Printf("plusid: cannot write %s.json, the list is not cached\n", l->cache);
+	std::string().swap(l->current.json);
+	std::string().swap(l->current.sig);
 	PlusId_KickBanned();
 }
 
@@ -373,10 +423,23 @@ static void PlusIdLists_Configure()
 		// the last good copy applies until a fetch brings a newer one
 		std::string error;
 		char when[21];
-		if ( !PlusIdLists_ReadFile(va("%s.json", l.cache), PLUSID_LIST_BYTES, &l.current.json)
-		     || !PlusIdLists_ReadFile(va("%s.sig", l.cache), PLUSID_SIG_BYTES, &l.current.sig) )
+		bool unchanged, found = false, read = false;
+		try
+		{
+			found = PlusIdLists_ReadFile(va("%s.json", l.cache), PLUSID_LIST_BYTES, &l.current.json)
+			        && PlusIdLists_ReadFile(va("%s.sig", l.cache), PLUSID_SIG_BYTES, &l.current.sig);
+			read = found && PlusIdLists_Read(l.pk, NULL, &l.current, &unchanged, &error);
+		}
+		catch ( const std::exception &e )
+		{
+			error = e.what();
+			std::vector<PlusIdListBan>().swap(l.current.bans);
+		}
+		std::string().swap(l.current.json);
+		std::string().swap(l.current.sig);
+		if ( !found && error.empty() )
 			Com_Printf("plusid: no cached copy of list %s, it applies once fetched\n", l.url.c_str());
-		else if ( !PlusIdLists_Read(l.pk, &l.current, &error) )
+		else if ( !read )
 			Com_Printf("plusid: the cached copy of list %s is not valid (%s), it applies once fetched\n", l.url.c_str(), error.c_str());
 		else
 		{
@@ -384,7 +447,7 @@ static void PlusIdLists_Configure()
 			PlusId_FormatTime(l.current.updated, false, when);
 			Com_Printf("plusid: list %s (%s) from the cache, updated %s, %d entries\n", l.current.name, l.url.c_str(), when, (int)l.current.bans.size());
 		}
-		lists.push_back(l);
+		lists.push_back(std::move(l));
 	}
 
 	if ( !lists.empty() )
@@ -429,8 +492,9 @@ void PlusIdLists_Frame()
 
 const PlusIdBan *PlusIdLists_Find(const char *id, const char **listName, const char **appeal)
 {
+	static PlusIdBan found;
 	long long now = time(NULL);
-	PlusIdBan key;
+	PlusIdListBan key;
 
 	Q_strncpyz(key.id, id, sizeof(key.id));
 	for ( size_t k = 0; k < lists.size(); k++ )
@@ -439,14 +503,18 @@ const PlusIdBan *PlusIdLists_Find(const char *id, const char **listName, const c
 
 		if ( !lists[k].have )
 			continue;
-		for ( std::vector<PlusIdBan>::const_iterator b = std::lower_bound(v.bans.begin(), v.bans.end(), key, PlusIdLists_ById);
+		for ( std::vector<PlusIdListBan>::const_iterator b = std::lower_bound(v.bans.begin(), v.bans.end(), key, PlusIdLists_ById);
 		      b != v.bans.end() && !strcmp(b->id, id); ++b )
 		{
 			if ( !b->expires || b->expires > now )
 			{
+				memset(&found, 0, sizeof(found));
+				memcpy(found.id, b->id, sizeof(found.id));
+				memcpy(found.reason, b->reason, sizeof(found.reason));
+				found.expires = b->expires;
 				*listName = v.name;
 				*appeal = v.appeal;
-				return &*b;
+				return &found;
 			}
 		}
 	}

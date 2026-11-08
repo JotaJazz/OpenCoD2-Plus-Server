@@ -9,7 +9,7 @@ rejected and what is left open; for what changed in detail see
 
 - `sv_banLists` names up to 8 lists signed with ECDSA P-256 like the connect proof (`PlusId_VerifyDigest`, now shared by `PlusId_Verify`); a thread per list fetches and verifies, the main thread adopts, caches in `plusid_lists/` and kicks. Any failure, an `updated` older than the copy in use, or over 4 MB / 100 000 entries keeps the last good copy; the cache applies at startup, so a host that is down lifts no bans. Lists never carry `guid` or `ip`.
 - `NetHttp_Fetch` capped every body at 65 000 bytes, the script VM's string limit; `NetHttpRequest` got a `maxBody` (default unchanged) so lists can be 4 MB. `PlusId_FormatTime` moved to `gmtime_r` because the list threads parse dates.
-- `sv_banLists` must be quoted in configs and on the command line: the tokenizer cuts at `//` and `;`. Lists honour `sv_httpCaFile` and `sv_httpAllowPrivate` but not `sv_httpAllowedHosts`. Open: a full 100 000-entry list takes about 50 MB of memory (`PlusIdBan` is ~520 bytes).
+- `sv_banLists` must be quoted in configs and on the command line: the tokenizer cuts at `//` and `;`. Lists honour `sv_httpCaFile` and `sv_httpAllowPrivate` but not `sv_httpAllowedHosts`. A list keeps only id, reason and expiry per entry (~160 bytes, ~16 MB for 100 000), a refresh with the same bytes is verified but not parsed again, and out of memory in a fetch or the cache load is a failed fetch, never an uncaught `bad_alloc`.
 
 ## 2026-11-08 — Plus ID verified at connect
 

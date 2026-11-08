@@ -426,7 +426,9 @@ def check_lists(args, check):
         key = os.path.join(maint, 'maint')
         banlist.keygen(key)
         pub = banlist.read(key + '.pub', 'r').strip()
-        handler = functools.partial(type('Quiet', (http.server.SimpleHTTPRequestHandler,), {'log_message': lambda *a: None}), directory=www)
+        requests = []
+        handler = functools.partial(type('Quiet', (http.server.SimpleHTTPRequestHandler,), {'log_message': lambda self, *a: requests.append(self.path)}),
+                                    directory=www)
         # a refused body closes the connection early, which is no error here
         httpd = type('QuietServer', (http.server.ThreadingHTTPServer,), {'handle_error': lambda *a: None})(('127.0.0.1', 0), handler)
         threading.Thread(target=httpd.serve_forever, daemon=True).start()
@@ -499,6 +501,11 @@ def check_lists(args, check):
                   and join('added') is None, f'{state("badsig")} {reply}')
             check('rollback', 'older' in state('rollback') and join('rolled') is None and join('rollback') is not None, state('rollback'))
             check('too_big', 'large' in state('big') and join('big') is not None, state('big'))
+            # the list that did not change was fetched again but not taken again
+            smoke_test.wait_for(lambda: requests.count('/ban.json') >= 2, 15)
+            adopted = log().count(f'plusid: list List ban ({base}ban.json) updated')
+            check('unchanged_not_adopted', requests.count('/ban.json') >= 2 and adopted == 1 and ' ok' in state('ban'),
+                  f'{requests.count("/ban.json")} fetches, {adopted} adopted, {state("ban")}')
         finally:
             for client in clients:
                 client.close()
