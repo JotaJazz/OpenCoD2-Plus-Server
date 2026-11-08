@@ -5,11 +5,15 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — Plus batch: downloads under load
+
+- Measured the server's own HTTP download at 62.5 Hz with 6 bots on `mp_toujane`: the gap between the snapshots a Plus client receives stays at p50 15.7 ms and p99 21 ms with no download, a download at 1024 KB/s, and `curl` fetching uncapped over loopback (about 1.5 GB/s), so the worker thread costs the match no frames. A downloader in the same Python process as the measuring client showed p99 97 ms from the GIL, not from the server. Not measured: the home uplink shared by a download and the game, which is what `sv_wwwMaxRate` is for.
+
 ## 2026-11-08 — the Plus server serves its downloads
 
 - A Plus server behind a home router has no web host for its mod iwds and does not know its public address. `sv_wwwBaseURL auto` redirects Plus clients to `plus:<name>` and a worker thread in `sv_www_plus.cpp` serves the file on TCP on the game port, only to an IP holding a grant from the redirect; the client builds the URL from the server it plays on (spec in [../architecture/plus-protocol.md](../architecture/plus-protocol.md#downloads)). Linux only, no version bump, other builds byte for byte as `dev`. The released 123 client refuses `plus:` with a `wwwdl fail` before any `ack`, on which the stock server drops; the Plus server takes it and falls back to UDP. Tokens are saved for 10 ms at most, as bigger bursts queue in a home router ahead of the game.
 - Left out: a start line and a refused-request counter in the log, and a token in the URL (the grant is by IP).
-- Left open: a player whose TCP leaves from another IP than its UDP, and frame times during a capped download (not measured with bots), in [../roadmap/debt.md](../roadmap/debt.md).
+- Left open: a player whose TCP leaves from another IP than its UDP, in [../roadmap/debt.md](../roadmap/debt.md).
 
 ## 2026-11-08 — upstream sync: weapon fx length
 
