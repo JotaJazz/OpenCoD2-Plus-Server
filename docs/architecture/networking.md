@@ -50,7 +50,8 @@ Huffman: `src/qcommon/msg_mp.cpp`.
   the `//` starts a comment and leaves `http:`.
 - `make PLUS=1` on Linux: `sv_wwwBaseURL auto` makes the server itself the
   HTTP side, on TCP on the game port, for Plus clients only (open the port in
-  TCP too in the router). Others get the UDP download. See
+  TCP too in the router). A Plus client that does not know `plus:` (the
+  released 123 client) gets the UDP download. See
   [plus-protocol.md](plus-protocol.md#downloads).
 - `MAX_MSGLEN` is `0x20000` in the 1.3 build and `0x4000` in the 1.0 build;
   packets are at most `MAX_PACKETLEN` (1400) bytes, fragments `FRAGMENT_SIZE`

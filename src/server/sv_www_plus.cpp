@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <limits.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <poll.h>
 #include <pthread.h>
 #include <signal.h>
@@ -124,6 +125,25 @@ bool SV_WwwPlus_FindGrant(uint32_t ip, const char *name, char *ospath, int ospat
 	return found;
 }
 
+// For the worker's accept: this IP holds a live grant of any file
+static bool WwwPlus_HasGrant(uint32_t ip)
+{
+	bool found = false;
+	int now = Sys_Milliseconds();
+
+	pthread_mutex_lock(&www_mutex);
+	for (wwwGrant_t *g = www_grants; g < www_grants + MAX_CLIENTS * 2; g++)
+	{
+		if (g->used && g->ip == ip && g->expires - now > 0)
+		{
+			found = true;
+			break;
+		}
+	}
+	pthread_mutex_unlock(&www_mutex);
+	return found;
+}
+
 /*
 The worker: one thread, a poll loop over the listener and the connections.
 Everything from a socket is hostile; it serves only a live grant's file, to
@@ -135,6 +155,7 @@ its IP, under its exact name. It never calls FS_*, Dvar_* or Com_Printf.
 #define WWW_HEAD_MS 10000 // the request head must arrive within this of the accept
 #define WWW_STALL_MS 30000 // a transfer with no bytes moving for this is closed
 #define WWW_SLICE_MS 100
+#define WWW_BURST_MS 10 // the most tokens saved: a home uplink queues bigger bursts ahead of the game
 #define WWW_CHUNK 65536
 #define WWW_LOG_LINES 16
 
@@ -285,7 +306,8 @@ static void WwwPlus_Request(wwwConn_t *c)
 	}
 }
 
-static void WwwPlus_Accept(int now)
+// Accepts what waits; false when out of descriptors or memory, to rest the listener a slice
+static bool WwwPlus_Accept(int now)
 {
 	for (int n = 0; n < 16; n++)
 	{
@@ -297,8 +319,14 @@ static void WwwPlus_Accept(int now)
 		uint32_t ip;
 
 		if (fd < 0)
-			return;
+			return errno != EMFILE && errno != ENFILE && errno != ENOBUFS && errno != ENOMEM;
 		memcpy(&ip, &from.sin_addr, 4); // network order, as the grants
+		// an IP that was redirected nothing may not even hold a slot
+		if (!WwwPlus_HasGrant(ip))
+		{
+			close(fd);
+			continue;
+		}
 		for (int i = 0; i < WWW_CONNS; i++)
 		{
 			if (www_conns[i].fd < 0)
@@ -317,11 +345,15 @@ static void WwwPlus_Accept(int now)
 			close(fd);
 			continue;
 		}
+		// the bucket paces the sends; Nagle would hold them for the delayed ack and burst
+		int one = 1;
+		setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one));
 		memset(slot, 0, sizeof(*slot));
 		slot->fd = fd;
 		slot->ip = ip;
 		slot->accepted = slot->moved = now;
 	}
+	return true;
 }
 
 // Reads the head; true while the connection stays open
@@ -391,6 +423,7 @@ static void *WwwPlus_Worker(void *)
 	int last = Sys_Milliseconds();
 	double tokens = 0;
 	int turn = 0;
+	int listenAfter = 0;
 
 	for (int i = 0; i < WWW_CONNS; i++)
 		www_conns[i].fd = -1;
@@ -399,16 +432,18 @@ static void *WwwPlus_Worker(void *)
 	{
 		int rate = www_maxRate.load();
 		int now = Sys_Milliseconds();
-		int budget, n = 0;
+		int budget, n = 0, timeout = WWW_SLICE_MS;
+		double perMs = rate * 1024.0 / 1000;
+		double burst = perMs * WWW_BURST_MS;
 
-		// the token bucket: rate KB/s for all transfers, at most two slices saved
-		tokens += (double)rate * 1024 * (now - last) / 1000;
-		if (tokens > rate * 1024.0 * 2 * WWW_SLICE_MS / 1000)
-			tokens = rate * 1024.0 * 2 * WWW_SLICE_MS / 1000;
+		// the token bucket: rate KB/s for all transfers, sent in small bursts
+		tokens += perMs * (now - last);
+		if (tokens > burst)
+			tokens = burst;
 		last = now;
 
 		fds[n].fd = www_listener;
-		fds[n].events = POLLIN;
+		fds[n].events = now - listenAfter >= 0 ? POLLIN : 0;
 		map[n++] = -1;
 		for (int i = 0; i < WWW_CONNS; i++)
 		{
@@ -418,18 +453,24 @@ static void *WwwPlus_Worker(void *)
 			fds[n].fd = c->fd;
 			if (!c->replyLen)
 				fds[n].events = POLLIN;
-			else if (c->replySent < c->replyLen || !rate || tokens >= 1)
+			else if (c->replySent < c->replyLen || !rate || tokens >= burst / 2)
 				fds[n].events = POLLOUT;
 			else
-				fds[n].events = 0; // waits for tokens; errors still wake it
+			{
+				// waits for half a burst of tokens; errors still wake it
+				int wait = (int)((burst / 2 - tokens) / perMs) + 1;
+				if (wait < timeout)
+					timeout = wait;
+				fds[n].events = 0;
+			}
 			map[n++] = i;
 		}
-		if (poll(fds, n, WWW_SLICE_MS) < 0 && errno != EINTR)
+		if (poll(fds, n, timeout) < 0 && errno != EINTR)
 			break;
 		now = Sys_Milliseconds();
 
-		if (fds[0].revents & POLLIN)
-			WwwPlus_Accept(now);
+		if ((fds[0].revents & POLLIN) && !WwwPlus_Accept(now))
+			listenAfter = now + WWW_SLICE_MS;
 
 		budget = rate ? (int)tokens : INT_MAX;
 		// in turn, so one transfer cannot take every slice's tokens
@@ -506,6 +547,12 @@ void SV_WwwPlus_Start(void)
 	// the engine's signal handlers stay on the main thread
 	sigset_t all, old;
 	sigfillset(&all);
+	// a crash in the worker still reaches the engine's crash handler
+	sigdelset(&all, SIGSEGV);
+	sigdelset(&all, SIGBUS);
+	sigdelset(&all, SIGFPE);
+	sigdelset(&all, SIGILL);
+	sigdelset(&all, SIGABRT);
 	pthread_sigmask(SIG_SETMASK, &all, &old);
 	int err = pthread_create(&www_thread, NULL, WwwPlus_Worker, NULL);
 	pthread_sigmask(SIG_SETMASK, &old, NULL);

@@ -134,18 +134,23 @@ Server, as built (`src/server/sv_www_plus.cpp`):
 
 - A Plus client that lacks a mod iwd gets the www redirect (`svc_download`
   block -1) with the URL `plus:<name>`, `<name>` being the iwd's path (for
-  example `plus:main/zz_mod.iwd`). Any other client gets the UDP download, as
-  does a Plus client too old to know `plus:` (it sends `wwwdl fail`).
+  example `plus:main/zz_mod.iwd`). A client of another Plus version gets the
+  UDP download. The released 123 client does not know `plus:`: it refuses the
+  URL and sends `wwwdl fail` without `wwwdl ack`, and the server takes that
+  `fail` (the stock server drops a client for it) and falls back to UDP.
 - Before the redirect the server records a grant for the client's IP and the
   file. A request may start for 5 minutes after the redirect, and a new
   redirect renews it. A started transfer finishes unless no bytes move for
   30 s. The grant is by IP, not by client slot, as `sv_wwwDlDisconnected`
   makes the client leave before its request arrives.
-- A request with no grant for that IP and exact name is `404`. Only `GET` and
+- A connection from an IP with no live grant is closed at accept; a request
+  with no grant for that IP and exact name is `404`. Only `GET` and
   `HEAD` are answered (`405` otherwise); the request head is at most 4 KB and
   arrives within 10 s. `200` has `Content-Length`, `Connection: close`, no
   ranges, no keep-alive.
-- `sv_wwwMaxRate` (1024 KB/s, all downloads together, `0` no cap),
+- `sv_wwwMaxRate` (1024 KB/s, all downloads together, `0` no cap, sent in
+  bursts of at most 10 ms of the rate so the router does not queue the game's
+  packets behind them),
   `sv_wwwMaxConnections` (4) and `sv_wwwMaxPerIP` (2) bound it.
 - Linux only: on a Windows Plus build `auto` redirects nobody. Without a
   listener (port busy, thread failed) no grant is given and Plus clients get
@@ -171,6 +176,10 @@ In `CL_ParseWWWDownload` (OpenCoD2-Plus, `cl_parse_mp.c`), before
   (percent-encode anything outside `[A-Za-z0-9._/-]`).
 - Everything after that is the existing redirect path (curl on Linux, WinINet
   on Windows, progress, `wwwdl` replies, flags).
+- Send `wwwdl ack` before any `wwwdl fail` where possible; the server also
+  accepts `fail` before `ack` and falls back to UDP.
+- On any HTTP failure (`404`, refused connection, timeout) behave as for any
+  failed redirect: `wwwdl fail`, then the UDP download.
 - An IPv4 address only, as the server has today.
 
 The request must come from the IP the client's UDP leaves from: a player

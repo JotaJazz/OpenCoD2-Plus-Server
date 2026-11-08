@@ -29,6 +29,21 @@ def ask(port, server_id, name):
         client.close()
 
 
+def fail_then_udp(port, server_id, name):
+    """A client that refuses the redirect (the Plus 123 client refuses plus:) sends
+    wwwdl fail with no ack; returns (redirects, what a second download gets)."""
+    client = cod2client.Client(port)
+    try:
+        assert client.connect(118, 'wwwold') is None
+        assert client.request_gamestate(server_id)
+        client.download(server_id, name)
+        redirects = client.redirects
+        client.command(server_id, 'wwwdl fail')
+        return redirects, client.download(server_id, name, 3.0)
+    finally:
+        client.close()
+
+
 def http(port, request, source='127.0.0.1', timeout=15.0):
     """Sends a raw request over TCP and returns all the server sent, or None if refused."""
     try:
@@ -83,6 +98,34 @@ def read_all(s, rate=None):
         data += chunk
 
 
+def timed_get(port, path):
+    """Reads a GET's whole reply; returns (body, the most bytes seen in any 100 ms and any 20 ms)."""
+    s = open_get(port, path)
+    s.settimeout(40)
+    arrivals, data = [], b''
+    with s:
+        while True:
+            try:
+                chunk = s.recv(4096)
+            except OSError:
+                break
+            if not chunk:
+                break
+            arrivals.append((time.monotonic(), len(chunk)))
+            data += chunk
+
+    def most(window):
+        best = total = first = 0
+        for last in range(len(arrivals)):
+            total += arrivals[last][1]
+            while arrivals[last][0] - arrivals[first][0] >= window:
+                total -= arrivals[first][1]
+                first += 1
+            best = max(best, total)
+        return best
+    return data.split(b'\r\n\r\n', 1)[-1], most(0.1), most(0.02)
+
+
 def closed_within(s, seconds):
     """True if the server closes s (EOF or reset) within seconds."""
     s.settimeout(seconds)
@@ -110,8 +153,17 @@ def check_http(port, sid, data, check):
     for path in ('/main/zz_svr_www.iwd', '/main/iw_00.iwd'):
         status = get(port, path)[0]
         check('no grant ' + path, status == 404, str(status))
-    status = get(port, '/' + MOD, source='127.0.0.2')[0]
-    check('no grant other ip', status == 404, str(status))
+    # an IP with no grant at all is closed at accept, and holds no slot
+    start = time.monotonic()
+    reply = http(port, b'GET /' + MOD.encode() + b' HTTP/1.1\r\n\r\n', source='127.0.0.2', timeout=3)
+    took = time.monotonic() - start
+    check('no grant other ip', reply == b'' and took < 0.5, f'{reply!r:.40} {took:.2f} s')
+    others = [socket.create_connection(('127.0.0.1', port), 5, source_address=('127.0.0.2', 0)) for _ in range(2)]
+    status, _, body = get(port, '/' + MOD)
+    closed = [closed_within(o, 0.5) for o in others]
+    for o in others:
+        o.close()
+    check('no grant other ip holds no slot', status == 200 and body == data and all(closed), f'{status} {closed}')
     for path in ('/main//zz_www_plus.iwd', '/main/%2e%2e/main/zz_www_plus.iwd', '/main/zz_www_plus.iwd?x',
                  '/../main/zz_www_plus.iwd', '//main/zz_www_plus.iwd', '/main/zz_www_plus.iwd%00',
                  '/main/zz_www_plus.iwd#', '/main/zz_www_plus.iwd%'):
@@ -164,9 +216,12 @@ def check_http(port, sid, data, check):
     smoke_test.rcon(port, RCON, 'set sv_wwwMaxRate 256')
     time.sleep(0.5)
     start = time.monotonic()
-    status, _, body = get(port, '/' + MOD)
+    body, per100, per20 = timed_get(port, '/' + MOD)
     took = time.monotonic() - start
-    check('rate cap', status == 200 and body == data and 3.5 <= took <= 5, f'{took:.1f} s')
+    check('rate cap', body == data and 3.5 <= took <= 5, f'{took:.1f} s')
+    # no bursts ahead of the game's packets: 2x the rate in any 100 ms, 5x in any 20 ms
+    check('rate cap smooth', per100 <= 2 * 256 * 1024 / 10 and per20 <= 5 * 256 * 1024 / 50,
+          f'{per100} bytes in 100 ms, {per20} in 20 ms')
     smoke_test.rcon(port, RCON, 'set sv_wwwMaxRate 1024')
     time.sleep(0.3)
 
@@ -226,6 +281,9 @@ def main():
                 sid = server_id(port)
                 reply, red = ask(port, sid, MOD)
                 check('plus redirect', red == [{'url': 'plus:' + MOD, 'flags': 0, 'size': size}] and b'PK' not in reply, str(red))
+                red, reply = fail_then_udp(port, sid, MOD)
+                check('fail without ack falls back to udp', len(red) == 1 and b'PK\x03\x04' in reply
+                      and b'UNEXPECTEDDOWLOADMESSAGE' not in open(log_path, 'rb').read(), f'{red} {len(reply)} bytes')
                 for name in ('main/zz_svr_www.iwd', 'main/iw_00.iwd'):
                     reply, red = ask(port, sid, name)
                     check('svr refused ' + name, REFUSED in reply and not red, str(red))

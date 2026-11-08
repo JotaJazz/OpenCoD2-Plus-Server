@@ -7,7 +7,7 @@ rejected and what is left open; for what changed in detail see
 
 ## 2026-11-08 — the Plus server serves its downloads
 
-- A Plus server behind a home router has no web host for its mod iwds and does not know its public address. `sv_wwwBaseURL auto` redirects Plus clients to `plus:<name>` and a worker thread in `sv_www_plus.cpp` serves the file on TCP on the game port, only to an IP holding a grant from the redirect; the client builds the URL from the server it plays on (spec in [../architecture/plus-protocol.md](../architecture/plus-protocol.md#downloads)). Linux only, no version bump, other builds byte for byte as `dev`.
+- A Plus server behind a home router has no web host for its mod iwds and does not know its public address. `sv_wwwBaseURL auto` redirects Plus clients to `plus:<name>` and a worker thread in `sv_www_plus.cpp` serves the file on TCP on the game port, only to an IP holding a grant from the redirect; the client builds the URL from the server it plays on (spec in [../architecture/plus-protocol.md](../architecture/plus-protocol.md#downloads)). Linux only, no version bump, other builds byte for byte as `dev`. The released 123 client refuses `plus:` with a `wwwdl fail` before any `ack`, on which the stock server drops; the Plus server takes it and falls back to UDP. Tokens are saved for 10 ms at most, as bigger bursts queue in a home router ahead of the game.
 - Left out: a start line and a refused-request counter in the log, and a token in the URL (the grant is by IP).
 - Left open: a player whose TCP leaves from another IP than its UDP, and frame times during a capped download (not measured with bots), in [../roadmap/debt.md](../roadmap/debt.md).
 
