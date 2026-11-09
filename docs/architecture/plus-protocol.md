@@ -51,6 +51,8 @@ list, and no client needs to look at a server before connecting.
 1. The Plus client always sends a `plus` key in the `connect` userinfo, with
    its Plus version, next to the usual `protocol\118`. Stock servers do not
    read it. The key is set for that packet only, not as a user variable.
+   The Plus ID keys `pk`, `ps` and `pa` may go in the same packet
+   ([plus-id.md](plus-id.md)); they do not change the Plus version.
 2. The server compares it with its own Plus version.
    - Equal: it answers `connectResponse 123`, and the client slot stores the
      version, which chooses the format of that client's snapshots.

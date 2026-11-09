@@ -5,6 +5,12 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-08 — Plus ID review fixes
+
+- Dates were `time_t`: on the 32-bit build a ban past 2038 wrote a 1901-1908 `expires`, and the next read rejected the whole bans file (and a shared list with one such entry). Dates are now long long days-from-civil maths, 1970 to 9999, and an `expires` not after `date` is rejected. A bans file that cannot be stat'ed was taken as missing and cleared the bans; only `ENOENT` is missing now.
+- The address rule took any private signed IP, so another LAN host could relay a LAN player's signature: a private IP must be 127/8, `net_ip` or one of the host's own (`Sys_IsLocalIP`). A port in `sv_publicAddress` is the one checked for it (`docker -p 28961:28960`). Behind Docker's bridge NAT, LAN players need `sv_publicAddress` or `net_ip` set to the LAN IP.
+- The seen file was read and written at every connect and drop; it is now an in-memory table, read again only when its size or time changed, and drops reach the file at the next 60 s save. Servers started together then saved in the same instant and lost each other's time (`shared_seen_file`), so a save now takes `<file>.lock`. Open: `NET_GetLocalAddress` on Linux resolves the host name, which on some hosts gives only 127.0.1.1, so a LAN IP may need `net_ip`.
+
 ## 2026-11-08 — Plus ID shared ban lists
 
 - `sv_banLists` names up to 8 lists signed with ECDSA P-256 like the connect proof (`PlusId_VerifyDigest`, now shared by `PlusId_Verify`); a thread per list fetches and verifies, the main thread adopts, caches in `plusid_lists/` and kicks. Any failure, an `updated` older than the copy in use, or over 4 MB / 100 000 entries keeps the last good copy; the cache applies at startup, so a host that is down lifts no bans. Lists never carry `guid` or `ip`.

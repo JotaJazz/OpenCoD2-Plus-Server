@@ -63,26 +63,35 @@ is. Bots and local clients have no challenge and no ID.
 In order, where "private" means 10/8, 127/8, 169.254/16, 172.16/12 or
 192.168/16 (`PlusId_IsPrivate`):
 
-1. The signed port must be the server's `net_port`.
-2. A private signed IP with a connect from a public address: reject, even when
+1. A private signed IP with a connect from a public address: reject, even when
    it is `net_ip` or `sv_publicAddress`.
-3. The signed IP is that of `sv_publicAddress`, or of `net_ip` when it names
-   an address (not empty, `localhost` or `0.0.0.0`): accept.
-4. The signed IP is private (and so, by step 2, is the source): accept.
-5. Anything else: reject.
+2. The signed IP is that of `sv_publicAddress` and the signed port is the one
+   that dvar names, or `net_port` when it names none: accept. A port there is
+   the one players dial when it is not the server's own (`docker -p
+   28961:28960`, a NAT remap).
+3. The signed port is not `net_port`: reject.
+4. The signed IP is that of `net_ip` when it names an address (not empty,
+   `localhost` or `0.0.0.0`): accept.
+5. The signed IP is private (and so, by step 1, is the source) and is this
+   host's: 127/8 or one of its own IPs (`Sys_IsLocalIP`, the addresses
+   `NET_GetLocalAddress` found at startup): accept.
+6. Anything else: reject.
 
-Step 2 stops a relay: a server on a VPN (Radmin, Hamachi) with the same
+Step 1 stops a relay: a server on a VPN (Radmin, Hamachi) with the same
 private IP as this one could otherwise pass on a signature from its public
-address. The predicate is not `Sys_IsLANAddress`, which also takes anyone in
-the /24 of one of the host's own IPs, so a neighbour there (a shared VPN's
-26.x or 25.x) could relay from its own address. Local tests cannot show it
-(every test address is private); `plusid_test.py`'s `address_rule` checks the
-same table on a Python copy of the rule.
+address. Step 5 stops another host of the LAN from passing on a LAN player's
+signature for its own address. The predicate is not `Sys_IsLANAddress`, which
+also takes anyone in the /24 of one of the host's own IPs, so a neighbour there
+(a shared VPN's 26.x or 25.x) could relay from its own address. Local tests
+cannot show the relays (every test address is private); `plusid_test.py`'s
+`address_rule` checks the same table on a Python copy of the rule.
 
 Without `sv_publicAddress` and a concrete `net_ip`, only LAN players can get an
 ID, and the first map prints
 `plusid: no sv_publicAddress, only LAN players get a Plus ID`. A server behind
-NAT must set it to the address players dial.
+NAT must set it to the address players dial. In a container behind Docker's
+bridge NAT the LAN IP players dial is the host's, not one of the container's,
+so LAN players get an ID only when `sv_publicAddress` or `net_ip` is that LAN IP.
 
 ### Dvars and commands
 
@@ -109,12 +118,15 @@ first seen with `getPlusIdFirstSeen()` (both `0` without an ID).
 `plusid_bans.json` in `fs_homepath`: `{"format": 1, "entries": [...]}`, each entry
 `id`, `reason`, `by`, `evidence`, `date` (`YYYY-MM-DD`, UTC) and `expires`
 (`YYYY-MM-DDTHH:MM:SSZ`, or `null` for permanent; a date alone also reads, as
-00:00 UTC), plus `guid` (0 is none) and `ip` ("" is none), which only local bans
+00:00 UTC; years 1970 to 9999, also on the 32-bit build; it must come after
+`date`, absent as 1970-01-01), plus `guid` (0 is none) and `ip` ("" is none), which only local bans
 have. It is written through `<file>.tmp.<pid>` and a rename, and read again when
 its size or time changed, so an edit applies at the next connect. The file is
 read as hostile: an entry with a bad ID, type or length (reason 127, by 63,
 evidence 255 characters) rejects the whole file (any other date format too), the bans in memory stay and the
-log says `plusid: cannot read <file>`. While the file is bad, `banPlusId` and
+log says `plusid: cannot read <file>`; so does a file that is there but cannot
+be stat'ed (a permission, a symlink loop), which is not a missing one. A `"` in
+a text is read as `'`, so it cannot end the quoted refusal. While the file is bad, `banPlusId` and
 `unbanPlusId` refuse (`plusid: cannot read <file>, fix it first`) and never
 overwrite it; a file that reads again clears that. An expired ban (`expires` passed) is
 ignored, not deleted.
@@ -123,7 +135,8 @@ ignored, not deleted.
 first, then the shared lists) before the
 `sv_requirePlusId` check and refuses with `You are banned from this server:
 <reason>`; `banPlusId` also drops that ID when connected (`PlusId_KickBanned`).
-Only slots in CS_CONNECTED or later count; a zombie keeps its ID until freed.
+Only slots in CS_CONNECTED or later count; a dropped player has no ID, which
+`SV_DropClient` frees (`SV_FreeClient`) before the slot is a zombie.
 A player whose guid (non-zero) or IP equals that of a live ban of another ID gets
 the flag `guid` and/or `ip`, kept for the slot and logged as `plusid: possible
 evasion <new> matches <banned> by ip`. The player is not refused. The older
@@ -133,15 +146,23 @@ GUID/IP bans (`banUser`, `ban.txt`, `SV_IsBannedIp`) are separate and unchanged.
 
 Players with an ID (never bots or players without one) are counted while the
 slot is connected. The seen file has one line per ID, `id first_seen seconds`
-(decimal integers, `first_seen` a Unix time). It is saved every 60 s, when a
-player drops, at the end of the map and at shutdown. A save re-reads the file,
-keeps the smallest `first_seen` and adds only the seconds this server counted
-since its last save, then writes `<file>.tmp.<pid>` and renames it over the file. So
+(decimal integers, `first_seen` a Unix time). The server keeps it in memory, a
+table by ID: a connect takes the player's time from it (and from the time of
+an earlier visit not saved yet) and a drop only marks its seconds pending,
+with no file I/O. It is saved every 60 s, at the end of the map and at
+shutdown, so a drop reaches the file within a minute. A save takes
+`<file>.lock` (created exclusively; one older than 10 s is a crash's and is
+taken over; a busy lock puts the save off 5 s, at shutdown up to 2 s), reads the
+file again only when its size or time (nanoseconds on Linux) changed, keeps the
+smallest `first_seen` and adds only the seconds this server counted since its
+last save, then writes `<file>.tmp.<pid>` and renames it over the file. So
 several servers can share one file (an absolute `sv_plusIdSeenFile`) and keep
-each other's time; two saving in the same instant can lose one interval. Time that cannot be written stays pending and the next save retries it. A file
-that exists but cannot be read is never overwritten: the server logs
-`plusid: cannot read <file>, playtime not saved`. The server never refuses or
-treats a player differently for how old an ID is.
+each other's time, also when they save at the same moment; on Windows, where
+the time has whole seconds, another server's write in the same second with
+the same size can be missed. Time that cannot be written stays pending and the
+next save retries it. A file that exists but cannot be read is never
+overwritten: the server logs `plusid: cannot read <file>, playtime not saved`.
+The server never refuses or treats a player differently for how old an ID is.
 
 ### Shared ban lists
 
@@ -170,7 +191,8 @@ Entries are those of the local bans, with the same dates and lengths, but a
 list never publishes `guid` or `ip`: an entry with either rejects the list,
 since publishing them exposes players and would let someone with a shared CD
 key frame another. `name` (up to 63 bytes) is required, `appeal` (up to 255) is
-optional, `updated` uses the date format of the entries.
+optional, `updated` uses the date format of the entries. A `"` in `name` or
+`appeal` is read as `'`.
 
 Each list is fetched on its own thread every `sv_banListRefresh` minutes, and
 at once when `sv_banLists` changes; the thread never touches the engine, the
@@ -202,7 +224,7 @@ Maintainers use `scripts/banlist.py` (the `openssl` CLI):
 | `keygen OUT` | writes `OUT.key` (private PEM, keep it secret) and `OUT.pub` (the hex for `sv_banLists`) |
 | `sign LIST KEY` | writes `LIST.sig` |
 | `verify LIST PUBHEX` | exit 0 when `LIST.sig` is good for the key, 1 otherwise |
-| `check LIST` | exit 0 when servers take the list's format and limits |
+| `check LIST` | exit 0 when servers take the list's format and limits; also 1 when `updated` is more than a day in the future, which would keep servers from taking any later version |
 
 The recommended workflow: the list lives in a GitHub repository, additions and
 appeals come as pull requests (with evidence), and the maintainer runs
