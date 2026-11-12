@@ -459,6 +459,20 @@ def check_vote_limit(port, protocol, password, check):
         check('a player calls at most three votes', len(nums) == 4 and called == 3 and 'GAME_MAXVOTESCALLED' in replies[3],
               f'{called} called, then {replies[3][:30] if len(replies) == 4 else replies}' if called == 3
               else f'{len(nums)} targets, replies {[r[:30] for r in replies]}')
+
+        # ClientConnect clears the client: the count must outlive a reconnect.
+        # The limit is checked before the spectator rule, so a spectator sees it
+        voter.command(server_id, 'disconnect')
+        voter.close()
+        time.sleep(0.5)
+        voter = cod2client.Client(port)
+        if voter.connect(protocol, 'smokevoter') is not None or not voter.request_gamestate(server_id):
+            check('the vote limit outlives a reconnect', False, 'voter did not join again')
+            return
+        voter.enter_game(server_id, 1.0)
+        voter.command(server_id, 'callvote map_restart')
+        seen = [c for f in voter.read_frames(1.5) for c in f['commands'] if 'GAME_' in c]
+        check('the vote limit outlives a reconnect', any('GAME_MAXVOTESCALLED' in c for c in seen), str(seen[-2:]))
     finally:
         voter.close()
         for target in targets:
