@@ -111,7 +111,11 @@ fight(target, skill)
 		self fireWeapon(0);
 		self reloadWeapon(0);
 		if(!self switchToLoadedWeapon())
+		{
+			// straight in: setWalkDir leaves the strafe's rightmove set
+			self setWalkDir("none");
 			self setWalkDir("forward");
+		}
 		return;
 	}
 

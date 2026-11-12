@@ -5,11 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
-## 2026-11-11 — known gaps: LAN IP and rcon lockout
+## 2026-11-11 — known gaps: LAN IP, rcon lockout, votes, bots
 
-- On Linux `NET_GetLocalAddress` resolved the host name: on this WSL host it gives only IPv6, so the server knew no LAN IP at all, and on Debian's default `/etc/hosts` only 127.0.1.1; the Plus ID rule then refused LAN players without `net_ip`. It now reads the interfaces (`getifaddrs`) and keeps only private IPv4s, so a public interface no longer puts its /24 into `Sys_IsLANAddress` (no authorize, no rate cap). The old loop also left `localIP[0]` at 0.0.0.0.
-- The rcon lockout's eviction, read-only until now, runs in `rcon_lockout_test.py`: `unshare -rn` gives a network namespace without root, with 70 addresses outside the exempt 127/8.
+- On Linux `NET_GetLocalAddress` resolved the host name: on this WSL host it gives only IPv6, so the server knew no LAN IP at all, and on Debian's default `/etc/hosts` only 127.0.1.1; the Plus ID rule then refused LAN players without `net_ip`. It now reads the interfaces (`getifaddrs`) and keeps only private IPv4s, so a public interface no longer puts its /24 into `Sys_IsLANAddress` (no authorize, no rate cap). The old loop also left `localIP[0]` at 0.0.0.0. The rcon lockout's eviction, read-only until now, runs in `rcon_lockout_test.py`: `unshare -rn` gives a network namespace without root, with 70 addresses outside the exempt 127/8.
 - The vote memory by IP (`EF_VOTED`, votes called) left `#ifdef COD2_PLUS` for every build: it changes no format and nothing the client predicts. The smoke test reconnects the voter after its three votes; a spectator meets the limit before the spectator rule, so a binary without it answers `GAME_NOSPECTATORCALLVOTE`.
+- Bots: a bot with no ammo left charges straight in (`setWalkDir` sets `forwardmove` and `rightmove` apart, so `forward` kept the strafe). `sd --bombmode 1` on `mp_brecourt` planted in 3 of 3 runs; the failure was not reproduced, see [../roadmap/debt.md](../roadmap/debt.md).
 
 ## 2026-11-08 — Plus ID review fixes
 
