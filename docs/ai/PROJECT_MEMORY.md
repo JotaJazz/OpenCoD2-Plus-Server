@@ -5,6 +5,11 @@ rewritten, at most three bullets each. It records why work mattered, what was
 rejected and what is left open; for what changed in detail see
 [../CHANGES.md](../CHANGES.md) and `git log`.
 
+## 2026-11-11 — known gaps: LAN IP and rcon lockout
+
+- On Linux `NET_GetLocalAddress` resolved the host name: on this WSL host it gives only IPv6, so the server knew no LAN IP at all, and on Debian's default `/etc/hosts` only 127.0.1.1; the Plus ID rule then refused LAN players without `net_ip`. It now reads the interfaces (`getifaddrs`) and keeps only private IPv4s, so a public interface no longer puts its /24 into `Sys_IsLANAddress` (no authorize, no rate cap). The old loop also left `localIP[0]` at 0.0.0.0.
+- The rcon lockout's eviction, read-only until now, runs in `rcon_lockout_test.py`: `unshare -rn` gives a network namespace without root, with 70 addresses outside the exempt 127/8.
+
 ## 2026-11-08 — Plus ID review fixes
 
 - Dates were `time_t`: on the 32-bit build a ban past 2038 wrote a 1901-1908 `expires`, and the next read rejected the whole bans file (and a shared list with one such entry). Dates are now long long days-from-civil maths, 1970 to 9999, and an `expires` not after `date` is rejected. A bans file that cannot be stat'ed was taken as missing and cleared the bans; only `ENOENT` is missing now.

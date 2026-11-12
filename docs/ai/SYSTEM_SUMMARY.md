@@ -62,6 +62,7 @@ run_bin.sh               runs bin/ from the repository (upstream's)
 | HTTP test | `python3 scripts/http_test.py <game>` |
 | Plus rules test | `python3 scripts/plus_rules_test.py <game> --binary <1.3 Plus bin>` |
 | Plus ID test | `python3 scripts/plusid_test.py <game>` |
+| Rcon lockout test | `python3 scripts/rcon_lockout_test.py <game>` |
 | Docs check | `python3 scripts/check_docs.py` and `python3 -m unittest discover -s scripts -p 'test_*.py'` |
 | Regenerate example cfg | `python3 scripts/gen_server_cfg.py` |
 | Install bots | `python3 scripts/install_bots.py <game> --dest <home>` |

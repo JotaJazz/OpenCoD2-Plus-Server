@@ -73,8 +73,8 @@ In order, where "private" means 10/8, 127/8, 169.254/16, 172.16/12 or
 4. The signed IP is that of `net_ip` when it names an address (not empty,
    `localhost` or `0.0.0.0`): accept.
 5. The signed IP is private (and so, by step 1, is the source) and is this
-   host's: 127/8 or one of its own IPs (`Sys_IsLocalIP`, the addresses
-   `NET_GetLocalAddress` found at startup): accept.
+   host's: 127/8 or one of its own IPs (`Sys_IsLocalIP`, the private IPv4s
+   of its interfaces that `NET_GetLocalAddress` found at startup): accept.
 6. Anything else: reject.
 
 Step 1 stops a relay: a server on a VPN (Radmin, Hamachi) with the same

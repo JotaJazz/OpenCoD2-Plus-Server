@@ -36,6 +36,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 #include <errno.h>
+#include <ifaddrs.h>
 
 #ifdef MACOS_X
 #import <sys/sockio.h>
@@ -296,8 +297,7 @@ qboolean Sys_IsLANAddress( netadr_t adr ) {
 	return qfalse;
 }
 
-// one of the host's own IPs, for the Plus ID address rule (a 0.0.0.0 entry
-// that NET_GetLocalAddress may leave is never a private address)
+// one of the host's own private IPs, for the Plus ID address rule
 qboolean Sys_IsLocalIP( netadr_t adr ) {
 	int i;
 
@@ -421,42 +421,32 @@ void NET_GetLocalAddress( void ) {
 }
 
 #else
+// The interfaces' addresses, not the host name's: gethostbyname often gives
+// only 127.0.1.1 (Debian's /etc/hosts) or only IPv6, which left no LAN IP for
+// the Plus ID address rule. Only private IPv4s are kept, so a public
+// interface does not make its /24 neighbours LAN in Sys_IsLANAddress.
 void NET_GetLocalAddress( void ) {
-	char				hostname[256];
-	struct hostent		*hostInfo;
-	// int					error; // bk001204 - unused
-	char				*p;
-	int					ip;
-	int					n;
-
-	if ( gethostname( hostname, 256 ) == -1 ) {
-		return;
-	}
-
-	hostInfo = gethostbyname( hostname );
-	if ( !hostInfo ) {
-		return;
-	}
-
-	Com_Printf( "Hostname: %s\n", hostInfo->h_name );
-	n = 0;
-	while( ( p = hostInfo->h_aliases[n++] ) != NULL ) {
-		Com_Printf( "Alias: %s\n", p );
-	}
-
-	if ( hostInfo->h_addrtype != AF_INET ) {
-		return;
-	}
+	struct ifaddrs		*ifap, *ifa;
+	const byte			*p;
 
 	numIP = 0;
-	while( ( p = hostInfo->h_addr_list[numIP++] ) != NULL && numIP < MAX_IPS ) {
-		ip = ntohl( *(int *)p );
-		localIP[ numIP ][0] = p[0];
-		localIP[ numIP ][1] = p[1];
-		localIP[ numIP ][2] = p[2];
-		localIP[ numIP ][3] = p[3];
-		Com_Printf( "IP: %i.%i.%i.%i\n", ( ip >> 24 ) & 0xff, ( ip >> 16 ) & 0xff, ( ip >> 8 ) & 0xff, ip & 0xff );
+	if ( getifaddrs( &ifap ) == -1 ) {
+		Com_Printf( "NET_GetLocalAddress: getifaddrs failed, errno = %d\n", errno );
+		return;
 	}
+
+	for ( ifa = ifap; ifa && numIP < MAX_IPS; ifa = ifa->ifa_next ) {
+		if ( !ifa->ifa_addr || ifa->ifa_addr->sa_family != AF_INET )
+			continue;
+		p = (const byte *)&( (struct sockaddr_in *)ifa->ifa_addr )->sin_addr;
+		if ( !( p[0] == 10 || ( p[0] == 172 && ( p[1] & 0xF0 ) == 16 ) || ( p[0] == 192 && p[1] == 168 ) || ( p[0] == 169 && p[1] == 254 ) ) )
+			continue;
+		memcpy( localIP[ numIP ], p, 4 );
+		Com_Printf( "IP: %i.%i.%i.%i (%s)\n", p[0], p[1], p[2], p[3], ifa->ifa_name );
+		numIP++;
+	}
+
+	freeifaddrs( ifap );
 }
 #endif
 

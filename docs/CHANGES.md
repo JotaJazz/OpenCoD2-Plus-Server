@@ -24,6 +24,7 @@ Everything this fork adds to [voron00/CoD2rev_Server](https://github.com/voron00
 
 ## Security and stability
 
+- **LAN addresses found on every Linux host:** the server took its own IPs from its host name, which on many hosts resolves only to 127.0.1.1 or only to IPv6, so it knew none of its LAN addresses and LAN players got no Plus ID without `net_ip`. It now reads the private IPv4s of its network interfaces. A public interface no longer makes the clients in its /24 count as LAN.
 - **Traces into models at the map start:** the skeleton memory for animated models was set up by the first server frame, so on the first map after startup a `bulletTrace` from a gametype's `main` or `CodeCallback_StartGameType` that reached a script model crashed the server (zPAM Plus `re` on `mp_toujane_fix` and `mp_burgundy`). It is now set up before the game starts.
 - **Compressed messages bounded:** the server Huffman-codes each message to a client into a stack buffer of the largest message size, but a rare byte takes up to 11 bits, so a message full of them (chat text, for one) grew past the buffer on 1.3; on 1.0 the buffer is 16 KB for snapshots of up to 128 KB. Compression now stops at the buffer's end and the client is dropped with `EXE_SERVERMESSAGEOVERFLOW`.
 - **manymaps map names checked:** the map name built the paths of the link manymaps creates, so `map ../x` (from rcon, or a mod passing player text to `map`) linked an `.iwd` from outside the library to outside the game folder. Names with `/`, `\` or `:` are no longer looked up in the library.

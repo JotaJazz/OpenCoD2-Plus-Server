@@ -26,7 +26,6 @@ None open. R1 became a known gap; R2–R5 were fixed on 2026-10-24
 | No server-side signal says a server has `g_shotgun_spread_fix`: a build from before ae124d3 also says `sv_plus` 123 and ignores the dvar, so zPAM's ranges for the pattern apply there with the random spread | `G_BulletFireSpread` in `src/game/g_weapon_mp.cpp` | The maintainer kept the Plus version at 123 on 2026-11-07, as the client shares nothing of it; the next Plus version covers it |
 | A Plus player whose TCP leaves from another public IP than its UDP (carrier-grade NAT with several addresses) gets a `404` from the server's own HTTP download and falls back to UDP | `src/server/sv_www_plus.cpp` | The grant is by IP. A token in the `plus:` URL would cover it if it turns out common ([plus-protocol.md](../architecture/plus-protocol.md#downloads)) |
 | Script runtime errors cascade outside developer mode: the thread goes on with `undefined` | `src/script/scr_vm.cpp` | Stock behaviour, kept: ending the thread would stop a mod that tolerates a small error. Nothing shows by default (`logErrors 0`, the error callback's queue is capped); in `make PLUS=1` the repeats with `logErrors 1` print as a count |
-| The rcon lockout's entry eviction is untested | `src/server/sv_main_pc_mp.cpp` | Read, never run: `127.x` is exempt from the lockout, so a local test cannot reach it |
 
 ## Bots mod
 
